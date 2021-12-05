@@ -70,7 +70,6 @@ impl LanguagePack {
     }
 }
 
-
 pub mod style_config {
     use iced::{button, Background, Color, Vector};
 
