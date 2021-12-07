@@ -1,5 +1,5 @@
-use std::{fs::File, io::BufReader, io::Read, collections::HashMap, borrow::Borrow};
 use json::{self, JsonValue};
+use std::{borrow::Borrow, collections::HashMap, fs::File, io::BufReader, io::Read};
 
 use self::language_pack_conastants::DEFAULT;
 
@@ -37,7 +37,7 @@ pub mod language_pack_conastants {
 pub struct LanguagePack {
     file_path: String,
     content_str: String,
-    content_json: JsonValue
+    content_json: JsonValue,
 }
 
 impl LanguagePack {
@@ -45,7 +45,7 @@ impl LanguagePack {
         LanguagePack {
             file_path: String::new(),
             content_str: String::new(),
-            content_json: JsonValue::Null
+            content_json: JsonValue::Null,
         }
     }
 
@@ -70,16 +70,47 @@ impl LanguagePack {
     }
 }
 
+
 pub mod style_config {
-    pub const FONT_SIZE: u16 = 14;
-    pub const DEFAULT_PADDING: u16 = 10;
-    pub const DEFAULT_SPACING: u16 = 20;
+    use iced::{button, Background, Color, Vector};
+
+    pub enum Button {
+        Primary,
+        Secondary,
+    }
+
+    impl button::StyleSheet for Button {
+        fn active(&self) -> button::Style {
+            button::Style {
+                background: Some(Background::Color(match self {
+                    Button::Primary => Color::from_rgb(0.11, 0.42, 0.87),
+                    Button::Secondary => Color::from_rgb(0.5, 0.5, 0.5),
+                })),
+                border_radius: 12.0,
+                shadow_offset: Vector::new(1.0, 1.0),
+                text_color: Color::from_rgb8(0xEE, 0xEE, 0xEE),
+                ..button::Style::default()
+            }
+        }
+
+        fn hovered(&self) -> button::Style {
+            button::Style {
+                text_color: Color::WHITE,
+                shadow_offset: Vector::new(1.0, 2.0),
+                ..self.active()
+            }
+        }
+    }
+
+    pub const FONT_SIZE: u16 = 32;
+    pub const DEFAULT_PADDING: u16 = 20;
+    pub const DEFAULT_SPACING: u16 = 40;
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Config {
     active_language_pack: String,
-    languages_pack: HashMap<String, LanguagePack>
+    languages_pack: HashMap<String, LanguagePack>,
 }
 
 impl Config {
@@ -95,7 +126,7 @@ impl Config {
 
                 map
             },
-            active_language_pack: String::from(DEFAULT)
+            active_language_pack: String::from(DEFAULT),
         }
     }
 

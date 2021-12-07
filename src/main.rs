@@ -1,27 +1,82 @@
-use iced::{executor, Application, Command, Element, Settings, Text, Executor, Clipboard};
+use std::rc::Rc;
+
+use iced::{
+    button, executor, Align, Application, Button, Clipboard, Column, Command,
+    Container, Element, HorizontalAlignment, Length, Settings, Text, Scrollable, scrollable
+};
+
+mod configuration;
+use configuration:: {
+    Config, LanguagePack, language_pack_conastants
+};
+
+mod presets;
+use presets:: {
+    PresetMessage, Presets
+};
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    BackPresset,
+    NextPresset,
+    PresetMessage(PresetMessage),
+}
 
 #[derive(Debug)]
-struct Generator;
+pub struct Generator {
+    config: Rc<Config>,
+    active_preset: Presets,
+    scroll: scrollable::State,
+}
 
 impl Application for Generator {
     type Executor = executor::Default;
-    type Message = ();
+    type Message = Message;
     type Flags = ();
 
-    fn new(_flags: ()) -> (Generator, Command<Self::Message>) {
-        (Generator, Command::none())
+    fn new(_flags: ()) -> (Generator, Command<Message>) {
+        let config: Rc<Config> = Rc::new(Config::new());
+
+        (
+            Generator {
+                config: { config.clone() },
+                active_preset: {
+                    Presets::Entry {
+                        config: config.clone(),
+                        create_new_button: button::State::new(),
+                        load_table_button: button::State::new(),
+                    }
+                },
+                scroll: scrollable::State::new()
+            },
+            Command::none(),
+        )
     }
 
     fn title(&self) -> String {
-        String::from("A cool application")
+        String::from("TVP PLC Generator")
     }
 
-    fn update(&mut self, _message: Self::Message, _clipboard: &mut Clipboard) -> Command<Self::Message> {
+    fn update(
+        &mut self,
+        _message: Message,
+        _clipboard: &mut Clipboard,
+    ) -> Command<Message> {
         Command::none()
     }
 
-    fn view(&mut self) -> Element<Self::Message> {
-        Text::new("Hello, world!").into()
+    fn view(&mut self) -> Element<Message> {
+        let content: Element<_> =self.active_preset
+            .view().map(Message::PresetMessage)
+            .into();
+
+        let scrollable = Scrollable::new(&mut self.scroll)
+            .push(Container::new(content).width(Length::Fill).center_x());
+
+        Container::new(scrollable)
+            .height(Length::Fill)
+            .center_y()
+            .into()
     }
 }
 
