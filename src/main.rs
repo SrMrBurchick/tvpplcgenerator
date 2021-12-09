@@ -12,8 +12,11 @@ use configuration:: {
 
 mod presets;
 use presets:: {
-    PresetMessage, Presets, IOConfigElement
+    PresetMessage, Presets
 };
+
+mod ioconfig;
+use ioconfig:: {IOConfigElement};
 
 #[derive(Debug, Clone)]
 pub enum Message {
