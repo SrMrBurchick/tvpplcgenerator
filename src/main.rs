@@ -7,12 +7,12 @@ use iced::{
 
 mod configuration;
 use configuration:: {
-    Config, LanguagePack, language_pack_conastants
+    Config, LanguagePack, language_pack_conastants, GLOBAL_CONFIG
 };
 
 mod presets;
 use presets:: {
-    PresetMessage, Presets
+    PresetMessage, Presets, IOConfigElement
 };
 
 #[derive(Debug, Clone)]
@@ -24,9 +24,9 @@ pub enum Message {
 
 #[derive(Debug)]
 pub struct Generator {
-    config: Rc<Config>,
-    active_preset: Presets,
+    active_preset: usize,
     scroll: scrollable::State,
+    presets: Vec<Presets>
 }
 
 impl Application for Generator {
@@ -35,19 +35,25 @@ impl Application for Generator {
     type Flags = ();
 
     fn new(_flags: ()) -> (Generator, Command<Message>) {
-        let config: Rc<Config> = Rc::new(Config::new());
+        unsafe {
+            GLOBAL_CONFIG = Some(Rc::new(Config::new()));
+        }
 
         (
             Generator {
-                config: { config.clone() },
-                active_preset: {
+                active_preset: 0,
+                scroll: scrollable::State::new(),
+                presets: vec![
                     Presets::Entry {
-                        config: config.clone(),
                         create_new_button: button::State::new(),
                         load_table_button: button::State::new(),
+                    },
+                    Presets::IOConfig {
+                        scroll: scrollable::State::new(),
+                        create_new_button: button::State::new(),
+                        elements: vec![]
                     }
-                },
-                scroll: scrollable::State::new()
+                ]
             },
             Command::none(),
         )
@@ -59,16 +65,30 @@ impl Application for Generator {
 
     fn update(
         &mut self,
-        _message: Message,
+        message: Message,
         _clipboard: &mut Clipboard,
     ) -> Command<Message> {
+        match message {
+            Message::PresetMessage(preset_message) => {
+                match preset_message {
+                    PresetMessage::NextPresset => {
+                        self.active_preset += 1
+                    },
+                    _ => {
+                        self.presets[self.active_preset].update(preset_message)
+                    }
+                }
+            },
+            _ => ()
+        }
         Command::none()
     }
 
     fn view(&mut self) -> Element<Message> {
+        let active_preset = self.active_preset;
         let content =
-            Column::new().
-            push(Container::new(self.active_preset
+            Column::new()
+            .push(Container::new(self.presets[active_preset]
                                 .view().map(Message::PresetMessage))
                 .width(Length::Fill));
 
