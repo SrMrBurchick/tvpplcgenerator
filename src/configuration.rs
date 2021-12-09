@@ -1,12 +1,31 @@
 use json::{self, JsonValue};
-use std::{borrow::Borrow, collections::HashMap, fs::File, io::BufReader, io::Read};
+use std::{borrow::Borrow, collections::HashMap, fs::File, io::BufReader, io::Read, rc::Rc};
+
+use crate::configuration::language_pack_conastants::{FIELD_TYPE_STATE, FIELD_TYPE_CONTROL, FIELD_SIGNAL_INPUT, FIELD_SIGNAL_OUTPUT};
 
 use self::language_pack_conastants::DEFAULT;
 
 pub static DEFAULT_LANGUAGE_PACK: &str = "./src/languages/US.json";
+pub static DELETE_BUTTON_PATH: &str = "./src/images/DeleteButton.svg";
+pub static FONTS_PATH: &str = "./src/fonts/icons.ttf";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrameTypes {
+    State,
+    Control,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SignalTypes{
+    Input,
+    Output,
+}
+
+pub static mut GLOBAL_CONFIG: Option<Rc<Config>> = None;
 
 pub mod language_pack_conastants {
     pub static BUTTON_ADD_NEW: &str = "BUTTON_ADD_NEW";
+    pub static IOCONFIG_EMPTY: &str = "IOCONFIG_EMPTY";
     pub static BUTTON_BACK: &str = "BUTTON_BACK";
     pub static BUTTON_FINISH: &str = "BUTTON_FINISH";
     pub static BUTTON_GENERATE_TABLE: &str = "BUTTON_GENERATE_TABLE";
@@ -156,5 +175,45 @@ impl Config {
 
     pub fn search_language_packs(&mut self, path: &str) {
         //TODO: Add language packs searching
+    }
+}
+
+impl std::fmt::Display for FrameTypes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
+
+        let state_string = config.get_field(FIELD_TYPE_STATE).to_string();
+        let control_string = config.get_field(FIELD_TYPE_CONTROL).to_string();
+
+        write!(
+            f,
+            "{}",
+            match self {
+                FrameTypes::State => state_string.as_str(),
+                FrameTypes::Control => control_string.as_str(),
+            }
+        )
+    }
+}
+
+impl std::fmt::Display for SignalTypes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
+
+        let input_string = config.get_field(FIELD_SIGNAL_INPUT).to_string();
+        let output_string = config.get_field(FIELD_SIGNAL_OUTPUT).to_string();
+
+        write!(
+            f,
+            "{}",
+            match self {
+                SignalTypes::Input => input_string.as_str(),
+                SignalTypes::Output => output_string.as_str(),
+            }
+        )
     }
 }
