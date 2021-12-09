@@ -1,5 +1,6 @@
 {
     "INFO": "US",
+    "IOCONFIG_EMPTY": "No configured I/O",
     "BUTTON_NEXT": "Next",
     "BUTTON_BACK": "Back",
     "CREATE_NEW": "Create new",
