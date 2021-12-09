@@ -35,6 +35,21 @@ pub enum Presets {
         create_new_button: button::State,
         elements: Vec<IOConfigElement>,
     },
+//    SubprogramConfig {
+//        scroll: scrollable::State,
+//        create_new_button: button::State,
+//        subprogramms: Vec<Subprogram>,
+//    },
+//    SubprogramStepsConfig {
+//        scroll: scrollable::State,
+//        create_new_button: button::State,
+//        steps: Vec<Step>
+//    },
+//    ConditionsConfig {
+//        scroll: scrollable::State,
+//        create_new_button: button::State,
+//        conditions: Vec<Conditions>
+//    }
 }
 
 #[derive(Debug, Clone)]
@@ -221,6 +236,22 @@ impl <'a> Presets {
                             create_new_button,
                             elements
                           ).map(PresetMessage::IOConfigMessage))
+//           Presets::SubprogramConfig {
+//                create_new_button,
+//                load_table_button
+//            } => Self::submprogtramconfig_view(create_new_button, load_table_button),
+//           Presets::SubprogramStepsConfig {
+//                create_new_button,
+//                load_table_button
+//            } => Self::subprogram_steps_view(create_new_button, load_table_button),
+//           Presets::Subprogram {
+//                create_new_button,
+//                load_table_button
+//            } => Self::subprogram_view(create_new_button, load_table_button),
+//           Presets::ConditionsConfig {
+//                create_new_button,
+//                load_table_button
+//            } => Self::conditions_view(create_new_button, load_table_button),
         }
         .into()
     }
@@ -298,7 +329,6 @@ impl <'a> Presets {
 
         let scrollable = Scrollable::new(scroll)
             .align_items(Align::Start)
-            .height(Length::Fill)
             .spacing(DEFAULT_SPACING)
             .padding(DEFAULT_PADDING)
             .push(Column::new()
@@ -310,7 +340,6 @@ impl <'a> Presets {
 
         Column::new()
             .width(Length::Fill)
-            .height(Length::Fill)
             .align_items(Align::Center)
             .push(scrollable)
         .into()

@@ -2,12 +2,12 @@ use std::rc::Rc;
 
 use iced::{
     button, executor, Align, Application, Button, Clipboard, Column, Command,
-    Container, Element, HorizontalAlignment, Length, Settings, Text, Scrollable, scrollable, Background, Color, Rectangle
+    Container, Element, HorizontalAlignment, Length, Settings, Text, Scrollable, scrollable, Background, Color, Rectangle, Row, Space
 };
 
 mod configuration;
 use configuration:: {
-    Config, LanguagePack, language_pack_conastants, GLOBAL_CONFIG
+    Config, LanguagePack, language_pack_conastants::{self, BUTTON_NEXT, BUTTON_BACK}, GLOBAL_CONFIG, style_config::{self, DEFAULT_SPACING, FONT_SIZE, DEFAULT_PADDING}
 };
 
 mod presets;
@@ -26,7 +26,9 @@ pub enum Message {
 pub struct Generator {
     active_preset: usize,
     scroll: scrollable::State,
-    presets: Vec<Presets>
+    presets: Vec<Presets>,
+    next_preset: button::State,
+    back_preset: button::State,
 }
 
 impl Application for Generator {
@@ -53,7 +55,9 @@ impl Application for Generator {
                         create_new_button: button::State::new(),
                         elements: vec![]
                     }
-                ]
+                ],
+                next_preset: button::State::new(),
+                back_preset: button::State::new(),
             },
             Command::none(),
         )
@@ -72,25 +76,58 @@ impl Application for Generator {
             Message::PresetMessage(preset_message) => {
                 match preset_message {
                     PresetMessage::NextPresset => {
-                        self.active_preset += 1
+                        if (self.active_preset + 1) < self.presets.len() {
+                            self.active_preset += 1
+                        }
                     },
                     _ => {
                         self.presets[self.active_preset].update(preset_message)
                     }
                 }
             },
-            _ => ()
+            Message::NextPresset => {
+                if (self.active_preset + 1) < self.presets.len() {
+                    self.active_preset += 1
+                }
+            },
+            Message::BackPresset => {
+                self.active_preset -= 1;
+            },
         }
         Command::none()
     }
 
     fn view(&mut self) -> Element<Message> {
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
         let active_preset = self.active_preset;
-        let content =
-            Column::new()
-            .push(Container::new(self.presets[active_preset]
+        let mut content = Column::new();
+
+        content = content.push(Container::new(self.presets[active_preset]
                                 .view().map(Message::PresetMessage))
                 .width(Length::Fill));
+
+        let controls = Row::new()
+            .align_items(Align::Center)
+            .padding(DEFAULT_PADDING)
+            .push(Button::new(&mut self.back_preset,
+                              Text::new(config.get_field(BUTTON_BACK)
+                                        .to_string().as_str()).size(FONT_SIZE))
+                  .on_press(Message::BackPresset)
+                  .style(style_config::Button::Secondary))
+            .push(Space::with_width(Length::Fill))
+            .push(Button::new(&mut self.next_preset,
+                              Text::new(config.get_field(BUTTON_NEXT)
+                                        .to_string().as_str()).size(FONT_SIZE)) 
+                  .on_press(Message::NextPresset)
+                  .style(style_config::Button::Primary));
+
+        if self.active_preset > 0 {
+            content = content
+                .push(Space::with_height(Length::Fill))
+                .push(controls.align_items(Align::End));
+        }
 
         Container::new(content)
             .height(Length::Fill)
