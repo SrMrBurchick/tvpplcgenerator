@@ -1,3 +1,5 @@
+use std::{rc::Rc, cell::RefCell};
+
 use iced::{
     button, Align, Button, Column, Element, Length, Text, Row, TextInput,
     text_input, pick_list, PickList
@@ -12,26 +14,18 @@ use crate::configuration:: {
     delete_icon
 };
 
-#[derive(Debug, Clone)]
-pub enum IOConfigElementMessage {
-    NameInputChanged(String),
-    FrameTypeSelected(FrameTypes),
-    SignalTypeSelected(SignalTypes),
-    HwSelected(String),
-    DeleteElement,
-}
+use crate::configs:: {
+    IOElement, IOElementMessage, IO_CONFIG
+};
 
 #[derive(Debug)]
-pub struct IOConfigElement {
+pub struct IOElementView {
     name_input: text_input::State,
-    name_input_value: String,
     type_list: pick_list::State<FrameTypes>,
-    selected_type: FrameTypes,
     signal_list: pick_list::State<SignalTypes>,
-    selected_signal: SignalTypes,
     hw_input: text_input::State,
-    selected_hw: String,
     delete_button: button::State,
+    ioelemnt: Rc<RefCell<IOElement>>,
 }
 
 static FRAME_TYPES_ALL: &[FrameTypes] = &[
@@ -44,64 +38,46 @@ static SIGNAL_TYPES_ALL: &[SignalTypes] = &[
     SignalTypes::Output,
 ];
 
-impl<'a> IOConfigElement {
-    pub fn new() -> Self {
-        IOConfigElement {
+impl<'a> IOElementView {
+    pub fn new(ioelemnt: Rc<RefCell<IOElement>>) -> Self {
+        IOElementView {
             name_input: text_input::State::new(),
-            name_input_value: String::new(),
             type_list: pick_list::State::default(),
-            selected_type: FrameTypes::State,
             signal_list: pick_list::State::default(),
-            selected_signal: SignalTypes::Input,
             hw_input: text_input::State::new(),
-            selected_hw: String::new(),
             delete_button: button::State::new(),
+            ioelemnt: ioelemnt.clone(),
         }
     }
 
-    pub fn update(&'a mut self, message: IOConfigElementMessage) {
-        match message {
-            IOConfigElementMessage::FrameTypeSelected(.., frametype) => {
-                self.selected_type = frametype
-            },
-            IOConfigElementMessage::NameInputChanged(.., name) => {
-                self.name_input_value = name
-            },
-            IOConfigElementMessage::SignalTypeSelected(.., signal_type) => {
-                self.selected_signal = signal_type
-            },
-            IOConfigElementMessage::HwSelected(.., hw) => {
-                self.selected_hw = hw
-            }
-            IOConfigElementMessage::DeleteElement => {}
-        }
-    }
+    pub fn view(&'a mut self) -> Element<'a, IOElementMessage> {
+        let (name, frame_type, signal_type, hw_address) =
+            self.ioelemnt.borrow().get_data();
 
-    pub fn view(&'a mut self) -> Element<'a, IOConfigElementMessage> {
         let name_input = TextInput::new(
             &mut self.name_input,
-            "", &self.name_input_value.as_str(),
-            IOConfigElementMessage::NameInputChanged
+            "", &name.as_str(),
+            IOElementMessage::NameInputChanged
         ).size(30).width(Length::Units(140));
 
         let type_list = PickList::new(
             &mut self.type_list,
             FRAME_TYPES_ALL,
-            Some(self.selected_type),
-            IOConfigElementMessage::FrameTypeSelected
+            Some(frame_type),
+            IOElementMessage::FrameTypeSelected
         );
 
         let signal_list = PickList::new(
             &mut self.signal_list,
             SIGNAL_TYPES_ALL,
-            Some(self.selected_signal),
-            IOConfigElementMessage::SignalTypeSelected
+            Some(signal_type),
+            IOElementMessage::SignalTypeSelected
         );
 
         let hw_input = TextInput::new(
             &mut self.hw_input,
-            "", &self.selected_hw.as_str(),
-            IOConfigElementMessage::HwSelected
+            "", String::from(format!("{}", hw_address)).as_str(),
+            IOElementMessage::HwSelected
         ).size(30).width(Length::Units(30));
 
         let config = unsafe {
@@ -110,7 +86,7 @@ impl<'a> IOConfigElement {
 
         let delete_button = Button::new(
             &mut self.delete_button, delete_icon())
-            .on_press(IOConfigElementMessage::DeleteElement);
+            .on_press(IOElementMessage::DeleteElement);
 
         Row::new()
             .spacing(DEFAULT_SPACING)

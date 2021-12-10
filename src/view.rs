@@ -1,63 +1,39 @@
 use std::rc::Rc;
 
 use iced::{
-    button, executor, Align, Application, Button, Clipboard, Column, Command,
-    Container, Element, HorizontalAlignment, Length, Settings, Text, Scrollable,
-    scrollable, Row, TextInput, text_input, futures::SinkExt, pick_list,
-    PickList, Svg, Image, Font
+    button, Align, Button, Column, Container, Element, HorizontalAlignment,
+    Length, Text, Scrollable, scrollable
 };
 
 use crate::{configuration:: {
-    Config,
     language_pack_conastants::{
-        CREATE_NEW, LOAD_TABLE, FIELD_NAME, BUTTON_ADD_NEW, FIELD_TYPE,
-        FIELD_SIGNAL, FIELD_HW, IOCONFIG_EMPTY
+        CREATE_NEW, LOAD_TABLE, BUTTON_ADD_NEW, IOCONFIG_EMPTY
     },
     style_config::{DEFAULT_PADDING, DEFAULT_SPACING, FONT_SIZE, self},
-    FrameTypes, GLOBAL_CONFIG, SignalTypes, DELETE_BUTTON_PATH, FONTS_PATH
-}, Message};
+    GLOBAL_CONFIG
+}, configs::IOConfig};
 
-use crate::ioconfig::{IOConfigElementMessage, IOConfigElement};
+use crate::ioconfigview::IOElementView;
+use crate::configs::{IOConfigMessage, IOElementMessage, IO_CONFIG};
 
 #[derive(Debug, Clone)]
-pub enum PresetMessage {
+pub enum PresetViewMessage {
     NextPresset,
     InputChanged(String),
     IOConfigMessage(IOConfigMessage)
 }
 
 #[derive(Debug)]
-pub enum Presets {
-    Entry {
+pub enum PresetViews {
+    EntryView {
         create_new_button: button::State,
         load_table_button: button::State,
     },
-    IOConfig {
+    IOConfigView {
         scroll: scrollable::State,
         create_new_button: button::State,
-        elements: Vec<IOConfigElement>,
+        elements: Vec<IOElementView>,
     },
-//    SubprogramConfig {
-//        scroll: scrollable::State,
-//        create_new_button: button::State,
-//        subprogramms: Vec<Subprogram>,
-//    },
-//    SubprogramStepsConfig {
-//        scroll: scrollable::State,
-//        create_new_button: button::State,
-//        steps: Vec<Step>
-//    },
-//    ConditionsConfig {
-//        scroll: scrollable::State,
-//        create_new_button: button::State,
-//        conditions: Vec<Conditions>
-//    }
-}
-
-#[derive(Debug, Clone)]
-pub enum IOConfigMessage {
-    AddNewElement,
-    IOConfigElementMessage(usize, IOConfigElementMessage),
 }
 
 fn empty_message<'a>(message: &str) -> Element<'a, IOConfigMessage> {
@@ -74,14 +50,14 @@ fn empty_message<'a>(message: &str) -> Element<'a, IOConfigMessage> {
     .into()
 }
 
-impl <'a> Presets {
-    pub fn view(&mut self) -> Element<PresetMessage> {
+impl <'a> PresetViews {
+    pub fn view(&mut self) -> Element<PresetViewMessage> {
         match self {
-           Presets::Entry {
+           PresetViews::EntryView {
                 create_new_button,
                 load_table_button
             } => Self::entry_view(create_new_button, load_table_button),
-            Presets::IOConfig {
+            PresetViews::IOConfigView {
                 scroll,
                 create_new_button,
                 elements
@@ -90,38 +66,22 @@ impl <'a> Presets {
                             scroll,
                             create_new_button,
                             elements
-                          ).map(PresetMessage::IOConfigMessage))
-//           Presets::SubprogramConfig {
-//                create_new_button,
-//                load_table_button
-//            } => Self::submprogtramconfig_view(create_new_button, load_table_button),
-//           Presets::SubprogramStepsConfig {
-//                create_new_button,
-//                load_table_button
-//            } => Self::subprogram_steps_view(create_new_button, load_table_button),
-//           Presets::Subprogram {
-//                create_new_button,
-//                load_table_button
-//            } => Self::subprogram_view(create_new_button, load_table_button),
-//           Presets::ConditionsConfig {
-//                create_new_button,
-//                load_table_button
-//            } => Self::conditions_view(create_new_button, load_table_button),
+                          ).map(PresetViewMessage::IOConfigMessage))
         }
         .into()
     }
 
-    pub fn update(&mut self, message: PresetMessage) {
+    pub fn update(&mut self, message: PresetViewMessage) {
         match self {
-            Presets::Entry {..} => Self::entry_view_update(message),
-            Presets::IOConfig {elements, ..} => Self::ioconfig_view_update(elements, message)
+            PresetViews::EntryView {..} => Self::entry_view_update(message),
+            PresetViews::IOConfigView {elements, ..} => Self::ioconfig_view_update(elements, message)
         }
     }
 
     fn entry_view(
         create_new_button: &'a mut button::State,
         load_table_button: &'a mut button::State
-    ) -> Column<'a, PresetMessage> {
+    ) -> Column<'a, PresetViewMessage> {
         let config = unsafe {
             &GLOBAL_CONFIG
         }.as_ref().unwrap();
@@ -136,27 +96,28 @@ impl <'a> Presets {
                                         .to_string().as_str())
                               .size(FONT_SIZE))
                 .style(style_config::Button::Primary)
-                .on_press(PresetMessage::NextPresset))
+                .on_press(PresetViewMessage::NextPresset))
             .push(Button::new(load_table_button,
                               Text::new(config.get_field(LOAD_TABLE)
                                         .to_string().as_str())
                               .size(FONT_SIZE))
                 .style(style_config::Button::Primary)
-                .on_press(PresetMessage::NextPresset))
+                .on_press(PresetViewMessage::NextPresset))
     }
 
-    fn entry_view_update(message: PresetMessage) {
+    fn entry_view_update(message: PresetViewMessage) {
         //TODO
     }
 
     fn ioconfig_view(
         scroll: &'a mut scrollable::State,
         create_new_button: &'a mut button::State,
-        elements: &'a mut Vec<IOConfigElement>
+        elements: &'a mut Vec<IOElementView>
     ) -> Element<'a, IOConfigMessage> {
         let config = unsafe {
             &GLOBAL_CONFIG
         }.as_ref().unwrap();
+
         let add_new = Column::new()
                   .align_items(Align::Center)
                   .width(Length::Fill)
@@ -173,7 +134,7 @@ impl <'a> Presets {
                     .enumerate()
                     .fold(Column::new().spacing(20), |column, (i, element)| {
                         column.push(element.view().map(move |message| {
-                            IOConfigMessage::IOConfigElementMessage(i, message)
+                            IOConfigMessage::IOElementMessage(i, message)
                         }))
                     })
                 .into()
@@ -201,26 +162,32 @@ impl <'a> Presets {
     }
 
     fn ioconfig_view_update(
-        elements: &'a mut Vec<IOConfigElement>,
-        message: PresetMessage
+        elements: &'a mut Vec<IOElementView>,
+        message: PresetViewMessage
     ) {
         match message {
-            PresetMessage::IOConfigMessage(ioconfig_message) => {
+            PresetViewMessage::IOConfigMessage(ioconfig_message) => {
+                let ioconfig = unsafe {
+                    &IO_CONFIG
+                }.as_ref().unwrap();
+
+                ioconfig.borrow_mut().update(ioconfig_message.clone());
+
                 match ioconfig_message {
-                    IOConfigMessage::IOConfigElementMessage(i, message) => {
+                    IOConfigMessage::IOElementMessage(i, message) => {
                         match message {
-                            IOConfigElementMessage::DeleteElement => {
+                            IOElementMessage::DeleteElement => {
                                 elements.remove(i);
                             },
                             _ => {
-                                if let Some(element) = elements.get_mut(i) {
-                                    element.update(message)
-                                }
                             }
                         }
                     },
                     IOConfigMessage::AddNewElement => {
-                        elements.push(IOConfigElement::new())
+                        elements.push(IOElementView::new(
+                                        unsafe{&IO_CONFIG}.as_ref().unwrap()
+                                        .borrow().get_last_element()
+                                    ))
                     }
                 }
             },

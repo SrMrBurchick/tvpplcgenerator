@@ -1,35 +1,34 @@
-use std::rc::Rc;
+use std::{rc::Rc, cell::RefCell};
 
+use configs::{IOConfig, IO_CONFIG};
 use iced::{
     button, executor, Align, Application, Button, Clipboard, Column, Command,
-    Container, Element, HorizontalAlignment, Length, Settings, Text, Scrollable, scrollable, Background, Color, Rectangle, Row, Space
+    Container, Element, Length, Settings, Text, scrollable, Row, Space
 };
 
 mod configuration;
 use configuration:: {
-    Config, LanguagePack, language_pack_conastants::{self, BUTTON_NEXT, BUTTON_BACK}, GLOBAL_CONFIG, style_config::{self, DEFAULT_SPACING, FONT_SIZE, DEFAULT_PADDING}
+    Config, language_pack_conastants::{BUTTON_NEXT, BUTTON_BACK}, GLOBAL_CONFIG,
+    style_config::{self, FONT_SIZE, DEFAULT_PADDING}
 };
+use view::{PresetViewMessage, PresetViews};
 
-mod presets;
-use presets:: {
-    PresetMessage, Presets
-};
-
-mod ioconfig;
-use ioconfig:: {IOConfigElement};
+mod view;
+mod ioconfigview;
+mod configs;
 
 #[derive(Debug, Clone)]
 pub enum Message {
     BackPresset,
     NextPresset,
-    PresetMessage(PresetMessage),
+    PresetViewMessage(PresetViewMessage),
 }
 
 #[derive(Debug)]
 pub struct Generator {
     active_preset: usize,
     scroll: scrollable::State,
-    presets: Vec<Presets>,
+    presets: Vec<PresetViews>,
     next_preset: button::State,
     back_preset: button::State,
 }
@@ -40,20 +39,16 @@ impl Application for Generator {
     type Flags = ();
 
     fn new(_flags: ()) -> (Generator, Command<Message>) {
-        unsafe {
-            GLOBAL_CONFIG = Some(Rc::new(Config::new()));
-        }
-
         (
             Generator {
                 active_preset: 0,
                 scroll: scrollable::State::new(),
                 presets: vec![
-                    Presets::Entry {
+                    PresetViews::EntryView {
                         create_new_button: button::State::new(),
                         load_table_button: button::State::new(),
                     },
-                    Presets::IOConfig {
+                    PresetViews::IOConfigView {
                         scroll: scrollable::State::new(),
                         create_new_button: button::State::new(),
                         elements: vec![]
@@ -76,9 +71,9 @@ impl Application for Generator {
         _clipboard: &mut Clipboard,
     ) -> Command<Message> {
         match message {
-            Message::PresetMessage(preset_message) => {
+            Message::PresetViewMessage(preset_message) => {
                 match preset_message {
-                    PresetMessage::NextPresset => {
+                    PresetViewMessage::NextPresset => {
                         if (self.active_preset + 1) < self.presets.len() {
                             self.active_preset += 1
                         }
@@ -108,7 +103,7 @@ impl Application for Generator {
         let mut content = Column::new();
 
         content = content.push(Container::new(self.presets[active_preset]
-                                .view().map(Message::PresetMessage))
+                                .view().map(Message::PresetViewMessage))
                 .width(Length::Fill));
 
         let controls = Row::new()
@@ -140,7 +135,16 @@ impl Application for Generator {
     }
 }
 
+fn init() {
+    unsafe {
+        GLOBAL_CONFIG = Some(Rc::new(Config::new()));
+        IO_CONFIG = Some(Rc::new(RefCell::new(IOConfig::new())));
+    }
+}
+
 fn main() -> iced::Result {
+    init();
+
     Generator::run(Settings {
         antialiasing: true,
         ..Settings::default()

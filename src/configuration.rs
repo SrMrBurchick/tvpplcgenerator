@@ -2,7 +2,7 @@ use iced::{Font, Length, Text, HorizontalAlignment, Container, Element, Applicat
 use json::{self, JsonValue};
 use std::{borrow::Borrow, collections::HashMap, fs::File, io::BufReader, io::Read, rc::Rc};
 
-use crate::configuration::language_pack_conastants::{FIELD_TYPE_STATE, FIELD_TYPE_CONTROL, FIELD_SIGNAL_INPUT, FIELD_SIGNAL_OUTPUT};
+use crate::configuration::language_pack_conastants::{FIELD_TYPE_STATE, FIELD_TYPE_CONTROL, FIELD_SIGNAL_INPUT, FIELD_SIGNAL_OUTPUT, SUBPROGRAM_TYPE_DEFAULT, SUBPROGRAM_TYPE_CRITICAL, SUBPROGRAM_TYPE_BLOCKED};
 
 use self::language_pack_conastants::DEFAULT;
 
@@ -21,6 +21,27 @@ pub enum SignalTypes{
     Input,
     Output,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Operators{
+    AND,
+    OR,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SubprogramTypes{
+    Dflt,
+    Critical,
+    Blocked
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IOElementStates{
+    Active,
+    Inactive,
+    Any,
+}
+
 
 pub static mut GLOBAL_CONFIG: Option<Rc<Config>> = None;
 
@@ -240,4 +261,39 @@ pub fn edit_icon() -> Text {
 
 pub fn delete_icon() -> Text {
     icon('\u{F1F8}')
+}
+
+impl std::fmt::Display for Operators {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Operators::AND => "AND",
+                Operators::OR => "OR",
+            }
+        )
+    }
+}
+
+impl std::fmt::Display for SubprogramTypes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
+
+        let deafult_string = config.get_field(SUBPROGRAM_TYPE_DEFAULT).to_string();
+        let critical_string = config.get_field(SUBPROGRAM_TYPE_CRITICAL).to_string();
+        let blocked_string = config.get_field(SUBPROGRAM_TYPE_BLOCKED).to_string();
+
+        write!(
+            f,
+            "{}",
+            match self {
+                SubprogramTypes::Dflt => deafult_string.as_str(),
+                SubprogramTypes::Critical => critical_string.as_str(),
+                SubprogramTypes::Blocked => blocked_string.as_str(),
+            }
+        )
+    }
 }
