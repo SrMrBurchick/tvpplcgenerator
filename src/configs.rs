@@ -5,6 +5,7 @@ use crate::configuration:: {
 };
 
 pub static mut IO_CONFIG: Option<Rc<RefCell<IOConfig>>> = None;
+pub static mut SUBPROGRAMS_CONFIG: Option<Rc<RefCell<SubprogramConfig>>> = None;
 
 #[derive(Debug, Clone)]
 pub enum IOElementMessage {
@@ -144,9 +145,18 @@ impl IOConfig {
 
 }
 
+#[derive(Debug, Clone)]
+pub enum IOElementCoditionsMessage {
+    AddNewElement,
+    DeleteElement,
+    IOElementMessage(usize, IOElementMessage),
+    StateChanged(IOElementStates),
+    IOElementChanged(),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IOElementCoditions {
-    element: Option<IOElement>,
+    element: Option<Rc<RefCell<IOElement>>>,
     state: IOElementStates,
 }
 
@@ -157,26 +167,240 @@ impl IOElementCoditions {
             state: IOElementStates::Any,
         }
     }
+
+    pub fn update(&mut self, message: IOElementCoditionsMessage) {
+        match message {
+            IOElementCoditionsMessage::StateChanged(state) => {
+                self.state = state
+            },
+            _ => {}
+        }
+    }
+
+    pub fn get_data(&self) -> (Option<Rc<RefCell<IOElement>>>, IOElementStates) {
+        (self.element.clone(), self.state.clone())
+    }
+
+}
+
+#[derive(Debug, Clone)]
+pub enum SubprogramStepMessage {
+    ChangeId(usize),
+    DeleteStep,
+    EditControlConditions(usize, IOElementCoditionsMessage),
+    EditStateConditions(usize, IOElementCoditionsMessage),
+    OperatorSelected(Operators),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SubprogramStep {
     id: usize,
     merge_operator: Operators,
-    state_conditions: Vec<IOElementCoditions>,
-    control_conditions: Vec<IOElementCoditions>,
+    state_conditions: Vec<Rc<RefCell<IOElementCoditions>>>,
+    control_conditions: Vec<Rc<RefCell<IOElementCoditions>>>,
+}
+
+impl SubprogramStep {
+    pub fn new() -> Self {
+        SubprogramStep {
+            id: 0,
+            merge_operator: Operators::AND,
+            state_conditions: vec![],
+            control_conditions: vec![],
+        }
+    }
+
+    pub fn add_new_conditon(
+        &mut self,
+        condition :Rc<RefCell<IOElementCoditions>>
+    ) {
+        let (element, _) = condition.as_ref().borrow().get_data();
+        let (_, frame_type, _, _) = element.unwrap().borrow().get_data();
+
+        match frame_type {
+            FrameTypes::State => {
+                self.state_conditions.push(condition.clone())
+            },
+            FrameTypes::Control => {
+                self.control_conditions.push(condition.clone())
+            }
+        }
+    }
+
+    pub fn get_conditions(
+        &self, frame_type: FrameTypes
+    ) -> Vec<Rc<RefCell<IOElementCoditions>>> {
+        match frame_type {
+            FrameTypes::State => {
+                self.state_conditions.clone()
+            },
+            FrameTypes::Control => {
+                self.control_conditions.clone()
+            }
+        }
+    }
+
+    pub fn update(
+        &mut self,
+        message: SubprogramStepMessage
+    ) {
+        match message {
+            SubprogramStepMessage::ChangeId(id) => {
+                self.id = id
+            },
+            SubprogramStepMessage::OperatorSelected(operator) => {
+                self.merge_operator = operator
+            },
+            SubprogramStepMessage::EditStateConditions(i, message) => {
+                match message {
+                    IOElementCoditionsMessage::DeleteElement => {
+                        self.state_conditions.remove(i);
+                    },
+                    IOElementCoditionsMessage::AddNewElement => {
+                        self.state_conditions.push(
+                            Rc::new(
+                                RefCell::new(IOElementCoditions::new()
+                            )));
+                    },
+                    _ => {
+                        if let Some(condition) = self.state_conditions.get_mut(i) {
+                            let mut mut_condition = condition.borrow_mut();
+                            mut_condition.update(message);
+                        }
+                    }
+                }
+            },
+            SubprogramStepMessage::EditControlConditions(i, message) => {
+                match message {
+                    IOElementCoditionsMessage::DeleteElement => {
+                        self.control_conditions.remove(i);
+                    },
+                    IOElementCoditionsMessage::AddNewElement => {
+                        self.control_conditions.push(
+                            Rc::new(
+                                RefCell::new(IOElementCoditions::new()
+                            )));
+                    },
+                    _ => {
+                        if let Some(condition) = self.control_conditions.get_mut(i) {
+                            let mut mut_condition = condition.borrow_mut();
+                            mut_condition.update(message);
+                        }
+                    }
+                }
+            },
+            SubprogramStepMessage::DeleteStep => ()
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum SubprogramMessage {
+    AddNewSubprogramStep,
+    SubprogramEdit,
+    SubprogramDelete,
+    SubprogramStepMessage(usize, SubprogramStepMessage),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Subprogram {
-    addres: usize,
+    address: usize,
     name: String,
     priority_type: SubprogramTypes,
-    steps: Vec<SubprogramStep>,
+    steps: Vec<Rc<RefCell<SubprogramStep>>>,
+}
+
+impl Subprogram {
+    pub fn new() -> Self {
+        Subprogram {
+            address: 0,
+            name: String::new(),
+            priority_type: SubprogramTypes::Dflt,
+            steps: vec![],
+        }
+    }
+
+    pub fn get_data(&self) -> (usize, String, SubprogramTypes, Vec<Rc<RefCell<SubprogramStep>>>) {
+        (self.address, self.name.clone(), self.priority_type, self.steps.clone())
+    }
+
+    pub fn update(
+        &mut self,
+        message: SubprogramMessage
+    ) {
+        match message {
+            SubprogramMessage::SubprogramStepMessage(i, message) => {
+                match message {
+                    SubprogramStepMessage::DeleteStep => {
+                        self.steps.remove(i);
+                    },
+                    _ => {
+                        if let Some(step) = self.steps.get_mut(i) {
+                            let mut mut_step = step.borrow_mut();
+                            mut_step.update(message);
+                        }
+                    }
+                }
+            },
+            SubprogramMessage::AddNewSubprogramStep => {
+                self.steps.push(Rc::new(
+                        RefCell::new(SubprogramStep::new())
+                ))
+            },
+            _ => (),
+        }
+    }
+
+}
+
+#[derive(Debug, Clone)]
+pub enum SubprogramConfigMessage {
+    AddNewSubprogram,
+    SubprogramMessage(usize, SubprogramMessage),
 }
 
 #[derive(Debug, Clone)]
 pub struct SubprogramConfig {
-    subprograms: Vec<Subprogram>,
+    subprograms: Vec<Rc<RefCell<Subprogram>>>,
+}
+
+impl SubprogramConfig {
+    pub fn new() -> Self {
+        SubprogramConfig {
+            subprograms: vec![],
+        }
+    }
+
+    pub fn get_last_subprogram(&self) -> Rc<RefCell<Subprogram>> {
+        self.subprograms.last().unwrap().clone()
+    }
+
+    pub fn update(
+        &mut self,
+        message: SubprogramConfigMessage
+    ) {
+        match message {
+            SubprogramConfigMessage::SubprogramMessage(i, message) => {
+                match message {
+                    SubprogramMessage::SubprogramDelete => {
+                        self.subprograms.remove(i);
+                    },
+                    _ => {
+                        if let Some(subprogram) = self.subprograms.get_mut(i) {
+                            let mut mut_subprogram = subprogram.borrow_mut();
+                            mut_subprogram.update(message);
+                        }
+                    }
+                }
+            },
+            SubprogramConfigMessage::AddNewSubprogram => {
+                self.subprograms.push(Rc::new(
+                        RefCell::new(Subprogram::new())
+                ))
+            },
+            _ => (),
+        }
+    }
+
 }
 

@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use configs::{IOConfig, IO_CONFIG};
+use configs::{IOConfig, IO_CONFIG, SUBPROGRAMS_CONFIG, SubprogramConfig};
 use iced::{
     button, executor, Align, Application, Button, Clipboard, Column, Command,
     Container, Element, Length, Settings, Text, scrollable, Row, Space
@@ -15,6 +15,7 @@ use view::{PresetViewMessage, PresetViews};
 
 mod view;
 mod ioconfigview;
+mod subprogramview;
 mod configs;
 
 #[derive(Debug, Clone)]
@@ -52,6 +53,11 @@ impl Application for Generator {
                         scroll: scrollable::State::new(),
                         create_new_button: button::State::new(),
                         elements: vec![]
+                    },
+                    PresetViews::SubprogramConfigView {
+                        scroll: scrollable::State::new(),
+                        create_new_button: button::State::new(),
+                        subprograms: vec![]
                     }
                 ],
                 next_preset: button::State::new(),
@@ -139,6 +145,7 @@ fn init() {
     unsafe {
         GLOBAL_CONFIG = Some(Rc::new(Config::new()));
         IO_CONFIG = Some(Rc::new(RefCell::new(IOConfig::new())));
+        SUBPROGRAMS_CONFIG = Some(Rc::new(RefCell::new(SubprogramConfig::new())))
     }
 }
 
