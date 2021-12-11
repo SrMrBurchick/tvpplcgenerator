@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use configs::{IOConfig, IO_CONFIG, SUBPROGRAMS_CONFIG, SubprogramConfig};
+use configs::{IOConfig, IO_CONFIG, SUBPROGRAMS_CONFIG, SubprogramConfig, SubprogramConfigStetes};
 use iced::{
     button, executor, Align, Application, Button, Clipboard, Column, Command,
     Container, Element, Length, Settings, Text, scrollable, Row, Space
@@ -57,7 +57,9 @@ impl Application for Generator {
                     PresetViews::SubprogramConfigView {
                         scroll: scrollable::State::new(),
                         create_new_button: button::State::new(),
-                        subprograms: vec![]
+                        subprograms: vec![],
+                        state: SubprogramConfigStetes::SubprogramConfigState,
+                        subprogramsteps: vec![]
                     }
                 ],
                 next_preset: button::State::new(),
@@ -95,7 +97,21 @@ impl Application for Generator {
                 }
             },
             Message::BackPresset => {
-                self.active_preset -= 1;
+                match &mut self.presets[self.active_preset] {
+                    PresetViews::SubprogramConfigView {state, ..} => {
+                        match state {
+                            SubprogramConfigStetes::SubprogramEditState => {
+                                *state = SubprogramConfigStetes::SubprogramConfigState;
+                            },
+                            _ => {
+                                self.active_preset -= 1;
+                            }
+                        }
+                    },
+                    _ => {
+                        self.active_preset -= 1;
+                    }
+                }
             },
         }
         Command::none()

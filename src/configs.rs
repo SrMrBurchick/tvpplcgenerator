@@ -187,6 +187,8 @@ impl IOElementCoditions {
 pub enum SubprogramStepMessage {
     ChangeId(usize),
     DeleteStep,
+    PickControlConditions,
+    PickStateConditions,
     EditControlConditions(usize, IOElementCoditionsMessage),
     EditStateConditions(usize, IOElementCoditionsMessage),
     OperatorSelected(Operators),
@@ -240,6 +242,18 @@ impl SubprogramStep {
         }
     }
 
+    pub fn get_data(&self) -> (
+        usize, Operators, Vec<Rc<RefCell<IOElementCoditions>>>,
+        Vec<Rc<RefCell<IOElementCoditions>>>
+    ) {
+        (
+            self.id,
+            self.merge_operator,
+            self.state_conditions.clone(),
+            self.control_conditions.clone(),
+        )
+    }
+
     pub fn update(
         &mut self,
         message: SubprogramStepMessage
@@ -289,7 +303,7 @@ impl SubprogramStep {
                     }
                 }
             },
-            SubprogramStepMessage::DeleteStep => ()
+            _ => ()
         }
     }
 }
@@ -304,7 +318,7 @@ pub enum SubprogramMessage {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Subprogram {
-    address: usize,
+    pub address: usize,
     name: String,
     priority_type: SubprogramTypes,
     steps: Vec<Rc<RefCell<SubprogramStep>>>,
@@ -324,6 +338,18 @@ impl Subprogram {
         (self.address, self.name.clone(), self.priority_type, self.steps.clone())
     }
 
+    pub fn get_step(&self, id: usize) -> Rc<RefCell<SubprogramStep>> {
+        self.steps.get(id).unwrap().clone()
+    }
+
+    pub fn get_last_step(&self) -> Rc<RefCell<SubprogramStep>> {
+        self.steps.last().unwrap().clone()
+    }
+
+    pub fn get_steps_count(&self) -> usize {
+        self.steps.len()
+    }
+
     pub fn update(
         &mut self,
         message: SubprogramMessage
@@ -333,6 +359,14 @@ impl Subprogram {
                 match message {
                     SubprogramStepMessage::DeleteStep => {
                         self.steps.remove(i);
+
+                        for i in 0..self.steps.len() {
+                            if let Some(step) = self.steps.get_mut(i) {
+                                let mut mut_step = step.borrow_mut();
+                                mut_step.update(SubprogramStepMessage::ChangeId(i + 1));
+                            }
+
+                        }
                     },
                     _ => {
                         if let Some(step) = self.steps.get_mut(i) {
@@ -345,7 +379,12 @@ impl Subprogram {
             SubprogramMessage::AddNewSubprogramStep => {
                 self.steps.push(Rc::new(
                         RefCell::new(SubprogramStep::new())
-                ))
+                ));
+
+                if let Some(step) = self.steps.clone().last_mut() {
+                    let mut mut_step = step.borrow_mut();
+                    mut_step.update(SubprogramStepMessage::ChangeId(self.steps.len()));
+                }
             },
             _ => (),
         }
@@ -360,19 +399,53 @@ pub enum SubprogramConfigMessage {
 }
 
 #[derive(Debug, Clone)]
+pub enum SubprogramConfigStetes {
+    SubprogramConfigState,
+    SubprogramEditState,
+    SubprogramStepConditonsPick,
+}
+
+#[derive(Debug, Clone)]
 pub struct SubprogramConfig {
     subprograms: Vec<Rc<RefCell<Subprogram>>>,
+    current_subprogram_edit: usize,
+    last_address: usize,
 }
 
 impl SubprogramConfig {
     pub fn new() -> Self {
         SubprogramConfig {
+            current_subprogram_edit: 0,
             subprograms: vec![],
+            last_address: 0,
         }
     }
 
     pub fn get_last_subprogram(&self) -> Rc<RefCell<Subprogram>> {
         self.subprograms.last().unwrap().clone()
+    }
+
+    pub fn get_current_editable_subprogram(&self) -> Rc<RefCell<Subprogram>> {
+        self.subprograms.get(self.current_subprogram_edit).unwrap().clone()
+    }
+
+    pub fn get_current_editable_id(&self) -> usize {
+        self.current_subprogram_edit
+    }
+
+    pub fn get_subprogram(&self, id: usize) -> Rc<RefCell<Subprogram>> {
+        self.subprograms.get(id).unwrap().clone()
+    }
+
+    pub fn update_addresses(&mut self) {
+        self.last_address = 1;
+        for i in 0..self.subprograms.len() {
+            if let Some(subprogram) = self.subprograms.get_mut(i) {
+                let mut mut_subprogram = subprogram.borrow_mut();
+                mut_subprogram.address = self.last_address;
+                self.last_address += mut_subprogram.get_steps_count();
+            }
+        }
     }
 
     pub fn update(
@@ -385,6 +458,9 @@ impl SubprogramConfig {
                     SubprogramMessage::SubprogramDelete => {
                         self.subprograms.remove(i);
                     },
+                    SubprogramMessage::SubprogramEdit => {
+                        self.current_subprogram_edit = i;
+                    },
                     _ => {
                         if let Some(subprogram) = self.subprograms.get_mut(i) {
                             let mut mut_subprogram = subprogram.borrow_mut();
@@ -396,10 +472,11 @@ impl SubprogramConfig {
             SubprogramConfigMessage::AddNewSubprogram => {
                 self.subprograms.push(Rc::new(
                         RefCell::new(Subprogram::new())
-                ))
+                ));
             },
             _ => (),
         }
+        self.update_addresses();
     }
 
 }

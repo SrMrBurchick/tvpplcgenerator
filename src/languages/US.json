@@ -18,9 +18,13 @@
     "SUBPROGRAM_TYPE_DEFAULT": "Default",
     "SUBPROGRAM_TYPE_CRITICAL": "Critical",
     "SUBPROGRAM_TYPE_BLOCKED": "Blocked",
+    "SUBPROGRAM_STEP": "Step",
     "BUTTON_FINISH": "Finish",
     "FIELD_DESCRIPTION": "Description",
     "BUTTON_GENERATE_TABLE": "Generate table",
+    "OPERATOR": "Operator",
+    "BUTTON_EDIT_STATES_SUBPROGRAM_STEP": "Pick states",
+    "BUTTON_EDIT_CONTROLS_SUBPROGRAM_STEP": "Pick controls",
     "BUTTON_TO_IO_CONFIGURATION": "To IO configuration",
     "BUTTON_TO_SUBPROGRAMMS_CONFIGURATION": "To subprogramms configuration",
     "BUTTON_TO_CONDITIONS": "To conditions configuration"

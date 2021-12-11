@@ -49,6 +49,10 @@ pub mod language_pack_conastants {
     pub static BUTTON_ADD_NEW: &str = "BUTTON_ADD_NEW";
     pub static IOCONFIG_EMPTY: &str = "IOCONFIG_EMPTY";
     pub static BUTTON_BACK: &str = "BUTTON_BACK";
+    pub static BUTTON_EDIT_STATES_SUBPROGRAM_STEP: &str = "BUTTON_EDIT_STATES_SUBPROGRAM_STEP";
+    pub static BUTTON_EDIT_CONTROLS_SUBPROGRAM_STEP: &str = "BUTTON_EDIT_CONTROLS_SUBPROGRAM_STEP";
+    pub static SUBPROGRAM_STEP: &str = "SUBPROGRAM_STEP";
+    pub static OPERATOR: &str = "OPERATOR";
     pub static BUTTON_FINISH: &str = "BUTTON_FINISH";
     pub static BUTTON_GENERATE_TABLE: &str = "BUTTON_GENERATE_TABLE";
     pub static BUTTON_NEXT: &str = "BUTTON_NEXT";
