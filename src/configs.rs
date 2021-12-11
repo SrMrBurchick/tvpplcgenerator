@@ -345,6 +345,8 @@ pub enum SubprogramMessage {
     AddNewSubprogramStep,
     SubprogramEdit,
     SubprogramDelete,
+    SubprogramTypeSelected(SubprogramTypes),
+    SubprogramDescrptionChanged(String),
     SubprogramStepMessage(usize, SubprogramStepMessage),
 }
 
@@ -429,6 +431,12 @@ impl Subprogram {
                     mut_step.update(SubprogramStepMessage::ChangeId(self.steps.len()));
                 }
             },
+            SubprogramMessage::SubprogramTypeSelected(program_type) => {
+                self.priority_type = program_type
+            }
+            SubprogramMessage::SubprogramDescrptionChanged(description) => {
+                self.name = description
+            }
             _ => (),
         }
     }
@@ -446,6 +454,7 @@ pub enum SubprogramConfigStetes {
     SubprogramConfigState,
     SubprogramEditState,
     SubprogramStepConditonsPick,
+    SubprogramEditDescription,
 }
 
 #[derive(Debug, Clone)]

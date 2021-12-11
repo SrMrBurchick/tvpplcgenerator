@@ -1,14 +1,14 @@
 use std::{rc::Rc, cell::RefCell};
 
 use iced::{
-    button, Button, Column, Element, Length, Text, Row, pick_list, PickList
+    button, Button, Column, Element, Length, Text, Row, pick_list, PickList, text_input, TextInput
 };
 
 use crate::{configuration:: {
     language_pack_conastants::{
-        FIELD_NAME,  FIELD_ADDRESS, BUTTON_EDIT_STATES_SUBPROGRAM_STEP, SUBPROGRAM_STEP, OPERATOR, BUTTON_EDIT_CONTROLS_SUBPROGRAM_STEP, FIELD_SIGNAL, FIELD_TYPE_STATE
+        FIELD_NAME,  FIELD_ADDRESS, BUTTON_EDIT_STATES_SUBPROGRAM_STEP, SUBPROGRAM_STEP, OPERATOR, BUTTON_EDIT_CONTROLS_SUBPROGRAM_STEP, FIELD_SIGNAL, FIELD_TYPE_STATE, FIELD_DESCRIPTION, FIELD_TYPE
     },
-    style_config::DEFAULT_SPACING, GLOBAL_CONFIG, delete_icon, edit_icon, Operators, IOElementStates, FrameTypes
+    style_config::{DEFAULT_SPACING, SUBPRORAM_DESCRIPTION_WIDTH}, GLOBAL_CONFIG, delete_icon, edit_icon, Operators, IOElementStates, FrameTypes, SubprogramTypes
 }, configs::{SubprogramStep, SubprogramStepMessage, IOElementCoditions, IOElementCoditionsMessage, IO_CONFIG, IOElement}};
 
 use crate::configs::{
@@ -24,6 +24,12 @@ static IO_STATES_ALL: &[IOElementStates] = &[
     IOElementStates::Active,
     IOElementStates::Inactive,
     IOElementStates::Any,
+];
+
+static SUBPROGRAM_TYPES_ALL: &[SubprogramTypes] = &[
+    SubprogramTypes::Dflt,
+    SubprogramTypes::Critical,
+    SubprogramTypes::Blocked,
 ];
 
 #[derive(Debug)]
@@ -49,7 +55,7 @@ impl<'a> SubprogramView {
         ).size(30).width(Length::Units(140));
 
         let description_label = Text::new(name).size(30)
-            .width(Length::Units(140));
+            .width(Length::Units(SUBPRORAM_DESCRIPTION_WIDTH));
 
         let edit_button = Button::new(&mut self.edit_button, edit_icon())
             .on_press(SubprogramMessage::SubprogramEdit);
@@ -227,3 +233,63 @@ impl<'a> SubprogramIOConditionsView {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SubprogramDescriptionEditView {
+    type_list: pick_list::State<SubprogramTypes>,
+    description_input: text_input::State,
+    subprogram: Rc<RefCell<Subprogram>>,
+}
+
+impl<'a> SubprogramDescriptionEditView {
+    pub fn new(subprogram: Rc<RefCell<Subprogram>>) -> Self {
+        SubprogramDescriptionEditView {
+            type_list: pick_list::State::default(),
+            description_input: text_input::State::new(),
+            subprogram: subprogram.clone(),
+        }
+    }
+
+    pub fn get_subprogram(&self) -> Rc<RefCell<Subprogram>> {
+        self.subprogram.clone()
+    }
+
+    pub fn view(&'a mut self) -> Element<'a, SubprogramMessage> {
+        let (address, desription, subprogram_type, _) = self.subprogram.borrow().get_data();
+
+        let type_list = PickList::new(
+            &mut self.type_list,
+            SUBPROGRAM_TYPES_ALL,
+            Some(subprogram_type),
+            SubprogramMessage::SubprogramTypeSelected
+        );
+
+        let description_input = TextInput::new(
+            &mut self.description_input,
+            "",
+            &desription,
+            SubprogramMessage::SubprogramDescrptionChanged
+        ).size(30)
+            .width(Length::Units(SUBPRORAM_DESCRIPTION_WIDTH));
+
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
+
+        Row::new()
+            .spacing(DEFAULT_SPACING)
+            .push(Column::new()
+                .push(Text::new(config.get_field(FIELD_ADDRESS).to_string()
+                                                              .as_str()))
+                .push(Text::new(format!("{}",address))))
+            .push(Column::new()
+                .push(Text::new(config.get_field(FIELD_DESCRIPTION).to_string()
+                                                              .as_str()))
+                .push(description_input))
+            .push(Column::new()
+                .push(Text::new(config.get_field(FIELD_TYPE).to_string()
+                                                              .as_str()))
+                .push(type_list))
+
+            .into()
+    }
+}

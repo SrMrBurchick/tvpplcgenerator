@@ -11,6 +11,7 @@ use configuration:: {
     Config, language_pack_conastants::{BUTTON_NEXT, BUTTON_BACK}, GLOBAL_CONFIG,
     style_config::{self, FONT_SIZE, DEFAULT_PADDING}, FrameTypes
 };
+use subprogramview::SubprogramDescriptionEditView;
 use view::{PresetViewMessage, PresetViews};
 
 mod view;
@@ -61,7 +62,8 @@ impl Application for Generator {
                         state: SubprogramConfigStetes::SubprogramConfigState,
                         subprogramsteps: vec![],
                         conditions: vec![],
-                        conditions_type: FrameTypes::State
+                        conditions_type: FrameTypes::State,
+                        subrogramedit_view: None
                     }
                 ],
                 next_preset: button::State::new(),
@@ -94,8 +96,29 @@ impl Application for Generator {
                 }
             },
             Message::NextPresset => {
-                if (self.active_preset + 1) < self.presets.len() {
-                    self.active_preset += 1
+                match &mut self.presets[self.active_preset] {
+                    PresetViews::SubprogramConfigView {state, ..} => {
+                        match state {
+                            SubprogramConfigStetes::SubprogramEditState => {
+                                *state = SubprogramConfigStetes::SubprogramEditDescription;
+                            },
+                            SubprogramConfigStetes::SubprogramEditDescription => {
+                                *state = SubprogramConfigStetes::SubprogramConfigState
+                            },
+                            SubprogramConfigStetes::SubprogramConfigState => {
+                                if (self.active_preset + 1) < self.presets.len() {
+                                    self.active_preset += 1
+                                }
+                            },
+                            _ => {
+                            }
+                        }
+                    },
+                    _ => {
+                        if (self.active_preset + 1) < self.presets.len() {
+                            self.active_preset += 1
+                        }
+                    }
                 }
             },
             Message::BackPresset => {
@@ -106,6 +129,9 @@ impl Application for Generator {
                                 *state = SubprogramConfigStetes::SubprogramConfigState;
                             },
                             SubprogramConfigStetes::SubprogramStepConditonsPick => {
+                                *state = SubprogramConfigStetes::SubprogramEditState
+                            },
+                            SubprogramConfigStetes::SubprogramEditDescription => {
                                 *state = SubprogramConfigStetes::SubprogramEditState
                             },
                             _ => {

@@ -9,7 +9,7 @@ use crate::{configuration:: {
     },
     style_config::{DEFAULT_PADDING, DEFAULT_SPACING, FONT_SIZE, self},
     GLOBAL_CONFIG, FrameTypes
-}, subprogramview::SubprogramIOConditionsView, configs::IOElementCoditionsMessage};
+}, subprogramview::{SubprogramIOConditionsView, SubprogramDescriptionEditView}, configs::IOElementCoditionsMessage};
 
 use crate::ioconfigview::{IOElementView};
 use crate::configs::{
@@ -46,6 +46,7 @@ pub enum PresetViews {
         subprogramsteps: Vec<SubprogramStepView>,
         conditions: Vec<SubprogramIOConditionsView>,
         conditions_type: FrameTypes,
+        subrogramedit_view: Option<SubprogramDescriptionEditView>
     },
 }
 
@@ -143,7 +144,6 @@ impl <'a> PresetViews {
         let config = unsafe {
             &GLOBAL_CONFIG
         }.as_ref().unwrap();
-
         let add_new = Column::new()
                   .align_items(Align::Center)
                   .width(Length::Fill)
@@ -232,7 +232,8 @@ impl <'a> PresetViews {
                 subprogramsteps,
                 state,
                 conditions,
-                conditions_type
+                conditions_type,
+                subrogramedit_view
             } => {
                 match state {
                     SubprogramConfigStetes::SubprogramConfigState => {
@@ -295,6 +296,39 @@ impl <'a> PresetViews {
                             )
                         })
                     },
+                    SubprogramConfigStetes::SubprogramEditDescription => {
+                        let subrogramconfig = unsafe {
+                            &SUBPROGRAMS_CONFIG
+                        }.as_ref().unwrap();
+                        let subprogram_id = subrogramconfig.borrow()
+                            .get_current_editable_id();
+
+                        match subrogramedit_view {
+                            None => {
+                                *subrogramedit_view = Some(
+                                    SubprogramDescriptionEditView::new(
+                                        subrogramconfig.borrow()
+                                        .get_current_editable_subprogram().clone()
+                                    ));
+                            },
+                            Some(editor) => {
+                                if editor.get_subprogram() != subrogramconfig.borrow()
+                                    .get_current_editable_subprogram() {
+                                *subrogramedit_view = Some(
+                                    SubprogramDescriptionEditView::new(
+                                        subrogramconfig.borrow()
+                                        .get_current_editable_subprogram().clone()
+                                    ));
+                                }
+                            }
+                        }
+
+                        Self::subrogramdescription_view(subrogramedit_view.as_mut().unwrap())
+                            .map(move |message| {
+                                SubprogramConfigMessage::SubprogramMessage(subprogram_id, message)
+                            })
+                    },
+
                     _ => Column::new().into()
                 }
             },
@@ -379,7 +413,7 @@ impl <'a> PresetViews {
                 match view {
                     PresetViews::SubprogramConfigView {
                         subprograms, subprogramsteps, state, conditions,
-                        conditions_type, ..
+                        conditions_type, subrogramedit_view, ..
                     } => {
                         match state {
                             SubprogramConfigStetes::SubprogramConfigState => {
@@ -405,7 +439,7 @@ impl <'a> PresetViews {
                                     },
                                     _ => (),
                                 }
-                            }
+                            },
                             _ => (),
                         }
 
@@ -629,5 +663,15 @@ impl <'a> PresetViews {
             },
             _ => ()
         }
+    }
+
+    fn subrogramdescription_view(
+        element: &'a mut SubprogramDescriptionEditView
+    ) -> Element<'a, SubprogramMessage> {
+        Column::new()
+            .width(Length::Fill)
+            .align_items(Align::Center)
+            .push(element.view())
+        .into()
     }
 }

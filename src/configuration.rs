@@ -153,6 +153,8 @@ pub mod style_config {
     pub const FONT_SIZE: u16 = 40;
     pub const DEFAULT_PADDING: u16 = 50;
     pub const DEFAULT_SPACING: u16 = 40;
+    pub const SUBPRORAM_DESCRIPTION_WIDTH: u16 = 300;
+    pub const SUBPRORAM_DESCRIPTION_HEIGTH: u16 = 300;
 }
 
 #[derive(Debug, PartialEq, Eq)]
