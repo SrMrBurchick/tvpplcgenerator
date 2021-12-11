@@ -1,6 +1,6 @@
-use iced::{Font, Length, Text, HorizontalAlignment, Container, Element, Application};
+use iced::{Font, Length, Text, HorizontalAlignment};
 use json::{self, JsonValue};
-use std::{borrow::Borrow, collections::HashMap, fs::File, io::BufReader, io::Read, rc::Rc};
+use std::{collections::HashMap, fs::File, io::BufReader, io::Read, rc::Rc};
 
 use crate::configuration::language_pack_conastants::{FIELD_TYPE_STATE, FIELD_TYPE_CONTROL, FIELD_SIGNAL_INPUT, FIELD_SIGNAL_OUTPUT, SUBPROGRAM_TYPE_DEFAULT, SUBPROGRAM_TYPE_CRITICAL, SUBPROGRAM_TYPE_BLOCKED};
 

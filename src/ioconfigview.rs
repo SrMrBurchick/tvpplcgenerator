@@ -15,7 +15,7 @@ use crate::configuration:: {
 };
 
 use crate::configs:: {
-    IOElement, IOElementMessage, IO_CONFIG
+    IOElement, IOElementMessage
 };
 
 #[derive(Debug)]
