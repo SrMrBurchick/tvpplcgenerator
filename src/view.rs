@@ -3,13 +3,13 @@ use iced::{
     Length, Text, Scrollable, scrollable
 };
 
-use crate::configuration:: {
+use crate::{configuration:: {
     language_pack_conastants::{
         CREATE_NEW, LOAD_TABLE, BUTTON_ADD_NEW, IOCONFIG_EMPTY
     },
     style_config::{DEFAULT_PADDING, DEFAULT_SPACING, FONT_SIZE, self},
-    GLOBAL_CONFIG
-};
+    GLOBAL_CONFIG, FrameTypes
+}, subprogramview::SubprogramIOConditionsView, configs::IOElementCoditionsMessage};
 
 use crate::ioconfigview::{IOElementView};
 use crate::configs::{
@@ -44,6 +44,8 @@ pub enum PresetViews {
         subprograms: Vec<SubprogramView>,
         state: SubprogramConfigStetes,
         subprogramsteps: Vec<SubprogramStepView>,
+        conditions: Vec<SubprogramIOConditionsView>,
+        conditions_type: FrameTypes,
     },
 }
 
@@ -228,13 +230,13 @@ impl <'a> PresetViews {
                 create_new_button,
                 subprograms,
                 subprogramsteps,
-                state
+                state,
+                conditions,
+                conditions_type
             } => {
                 match state {
                     SubprogramConfigStetes::SubprogramConfigState => {
-                        if 0 != subprogramsteps.len() {
-                            subprogramsteps.clear();
-                        }
+                        subprogramsteps.clear();
 
                         Self::subrogramconfig_view(scroll, create_new_button, subprograms)
                     },
@@ -243,6 +245,8 @@ impl <'a> PresetViews {
                             &SUBPROGRAMS_CONFIG
                         }.as_ref().unwrap();
                         let id = subrogramconfig.borrow().get_current_editable_id();
+
+                        conditions.clear();
 
                         if 0 == subprogramsteps.len() {
                             let (_, _, _, steps) = subrogramconfig.borrow()
@@ -258,6 +262,38 @@ impl <'a> PresetViews {
                             .map(move |message| {
                                 SubprogramConfigMessage::SubprogramMessage(id, message)
                             })
+                    },
+                    SubprogramConfigStetes::SubprogramStepConditonsPick => {
+                        let subrogramconfig = unsafe {
+                            &SUBPROGRAMS_CONFIG
+                        }.as_ref().unwrap();
+                        let subprogram_id = subrogramconfig.borrow()
+                            .get_current_editable_id();
+                        let step_id = subrogramconfig.borrow()
+                            .get_current_editable_subprogram().borrow()
+                            .get_current_editable_step_id();
+
+                        if 0 == conditions.len() {
+                            let conditions_borowed = subrogramconfig.borrow()
+                                .get_current_editable_subprogram().borrow()
+                                .get_current_editable_step().borrow()
+                                .get_conditions(*conditions_type);
+
+                            for condition in conditions_borowed {
+                                conditions.push(SubprogramIOConditionsView::new(condition))
+                            }
+                        }
+
+                        Self::subprogramconditons_view(
+                            scroll, create_new_button, conditions,
+                            *conditions_type
+                        )
+                        .map(move |message| {
+                            SubprogramConfigMessage::SubprogramMessage(
+                                subprogram_id,
+                                SubprogramMessage::SubprogramStepMessage(step_id, message)
+                            )
+                        })
                     },
                     _ => Column::new().into()
                 }
@@ -342,7 +378,8 @@ impl <'a> PresetViews {
 
                 match view {
                     PresetViews::SubprogramConfigView {
-                        subprograms, subprogramsteps, state, ..
+                        subprograms, subprogramsteps, state, conditions,
+                        conditions_type, ..
                     } => {
                         match state {
                             SubprogramConfigStetes::SubprogramConfigState => {
@@ -351,11 +388,24 @@ impl <'a> PresetViews {
                             SubprogramConfigStetes::SubprogramEditState => {
                                 match subprogramconfig_message {
                                     SubprogramConfigMessage::SubprogramMessage(_i, message) => {
-                                        Self::subprogrameditor_view_update(subprogramsteps, message)
+                                        Self::subprogrameditor_view_update(subprogramsteps, state, conditions_type, message)
                                     },
                                     _ => (),
                                 }
                             },
+                            SubprogramConfigStetes::SubprogramStepConditonsPick => {
+                                match subprogramconfig_message {
+                                    SubprogramConfigMessage::SubprogramMessage(_i, message) => {
+                                        match message {
+                                            SubprogramMessage::SubprogramStepMessage(_i, message) => {
+                                                Self::subprogramconditons_view_update(conditions, message)
+                                            },
+                                            _ => (),
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            }
                             _ => (),
                         }
 
@@ -460,6 +510,8 @@ impl <'a> PresetViews {
 
     fn subprogrameditor_view_update(
         elements: &'a mut Vec<SubprogramStepView>,
+        state: &'a mut SubprogramConfigStetes,
+        conditions_type: &'a mut FrameTypes,
         message: SubprogramMessage
     ) {
         match message {
@@ -468,6 +520,15 @@ impl <'a> PresetViews {
                     SubprogramStepMessage::DeleteStep => {
                         elements.remove(i);
                     },
+                    SubprogramStepMessage::PickConditions(frame_type) => {
+                        *state = SubprogramConfigStetes::SubprogramStepConditonsPick;
+                        *conditions_type = frame_type;
+                        unsafe{&SUBPROGRAMS_CONFIG}.as_ref().unwrap().borrow_mut()
+                            .get_current_editable_subprogram().borrow_mut()
+                            .get_current_editable_step().borrow_mut()
+                            .active_condion = frame_type;
+
+                    }
                     _ => ()
                 }
             },
@@ -475,6 +536,95 @@ impl <'a> PresetViews {
                 elements.push(SubprogramStepView::new(
                                 unsafe{&SUBPROGRAMS_CONFIG}.as_ref().unwrap()
                                 .borrow().get_current_editable_subprogram().borrow().get_last_step()
+                            ))
+            },
+            _ => ()
+        }
+    }
+
+    fn subprogramconditons_view(
+        scroll: &'a mut scrollable::State,
+        create_new_button: &'a mut button::State,
+        elements: &'a mut Vec<SubprogramIOConditionsView>,
+        conditions_type: FrameTypes,
+    ) -> Element<'a, SubprogramStepMessage> {
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
+
+
+        let add_new = Column::new()
+                  .align_items(Align::Center)
+                  .width(Length::Fill)
+                  .push(Button::new(create_new_button,
+                              Text::new(config.get_field(BUTTON_ADD_NEW)
+                                        .to_string().as_str())
+                              .size(FONT_SIZE))
+                        .style(style_config::Button::Primary)
+                        .on_press(SubprogramStepMessage::AddCondition(conditions_type)));
+
+        let elements_view: Element<_> = if elements.len() > 0 {
+                elements
+                    .iter_mut()
+                    .enumerate()
+                    .fold(Column::new().spacing(20), |column, (i, element)| {
+                        column.push(element.view().map(move |message| {
+                            SubprogramStepMessage::IOElementCoditionsMessage(i, message)
+                        }))
+                    })
+                .into()
+        } else {
+            Container::new(
+                Text::new(config.get_field(IOCONFIG_EMPTY).to_string().as_str())
+                    .width(Length::Fill)
+                    .size(25)
+                    .horizontal_alignment(HorizontalAlignment::Center)
+                    .color([0.7, 0.7, 0.7]),
+            )
+            .width(Length::Fill)
+            .center_x()
+            .center_y()
+            .into()
+        };
+
+
+        let scrollable = Scrollable::new(scroll)
+            .align_items(Align::Start)
+            .spacing(DEFAULT_SPACING)
+            .padding(DEFAULT_PADDING)
+            .push(Column::new()
+                    .push(Container::new(elements_view))
+                    .width(Length::Fill)
+                    .align_items(Align::Center))
+            .push(add_new);
+
+
+        Column::new()
+            .width(Length::Fill)
+            .align_items(Align::Center)
+            .push(scrollable)
+        .into()
+    }
+
+    fn subprogramconditons_view_update(
+        elements: &'a mut Vec<SubprogramIOConditionsView>,
+        message: SubprogramStepMessage,
+    ) {
+        match message {
+            SubprogramStepMessage::IOElementCoditionsMessage(i, io_message) => {
+                match io_message {
+                    IOElementCoditionsMessage::DeleteElement(_) => {
+                        elements.remove(i);
+                    },
+                    _ => ()
+                }
+            },
+            SubprogramStepMessage::AddCondition(frame_type) => {
+                elements.push(SubprogramIOConditionsView::new(
+                                unsafe{&SUBPROGRAMS_CONFIG}.as_ref().unwrap().borrow()
+                                .get_current_editable_subprogram().borrow()
+                                .get_current_editable_step().borrow()
+                                .get_last_condition(frame_type)
                             ))
             },
             _ => ()

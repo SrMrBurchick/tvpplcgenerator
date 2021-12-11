@@ -6,10 +6,10 @@ use iced::{
 
 use crate::{configuration:: {
     language_pack_conastants::{
-        FIELD_NAME,  FIELD_ADDRESS, BUTTON_EDIT_STATES_SUBPROGRAM_STEP, SUBPROGRAM_STEP, OPERATOR, BUTTON_EDIT_CONTROLS_SUBPROGRAM_STEP
+        FIELD_NAME,  FIELD_ADDRESS, BUTTON_EDIT_STATES_SUBPROGRAM_STEP, SUBPROGRAM_STEP, OPERATOR, BUTTON_EDIT_CONTROLS_SUBPROGRAM_STEP, FIELD_SIGNAL, FIELD_TYPE_STATE
     },
-    style_config::DEFAULT_SPACING, GLOBAL_CONFIG, delete_icon, edit_icon, Operators
-}, configs::{SubprogramStep, SubprogramStepMessage}};
+    style_config::DEFAULT_SPACING, GLOBAL_CONFIG, delete_icon, edit_icon, Operators, IOElementStates, FrameTypes
+}, configs::{SubprogramStep, SubprogramStepMessage, IOElementCoditions, IOElementCoditionsMessage, IO_CONFIG, IOElement}};
 
 use crate::configs::{
     SubprogramMessage, Subprogram
@@ -18,6 +18,12 @@ use crate::configs::{
 static OPERATORS_ALL: &[Operators] = &[
     Operators::AND,
     Operators::OR,
+];
+
+static IO_STATES_ALL: &[IOElementStates] = &[
+    IOElementStates::Active,
+    IOElementStates::Inactive,
+    IOElementStates::Any,
 ];
 
 #[derive(Debug)]
@@ -112,12 +118,12 @@ impl<'a> SubprogramStepView {
         let edit_state_button = Button::new(
             &mut self.state_edit_button,
             Text::new(config.get_field(BUTTON_EDIT_STATES_SUBPROGRAM_STEP).to_string())
-        ).on_press(SubprogramStepMessage::PickStateConditions);
+        ).on_press(SubprogramStepMessage::PickConditions(FrameTypes::State));
 
         let edit_control_button = Button::new(
             &mut self.control_edit_button,
             Text::new(config.get_field(BUTTON_EDIT_CONTROLS_SUBPROGRAM_STEP).to_string())
-        ).on_press(SubprogramStepMessage::PickControlConditions);
+        ).on_press(SubprogramStepMessage::PickConditions(FrameTypes::Control));
 
         let delete_button = Button::new(&mut self.delete_button, delete_icon())
             .on_press(SubprogramStepMessage::DeleteStep);
@@ -134,6 +140,87 @@ impl<'a> SubprogramStepView {
                 .push(operator_list))
             .push(edit_state_button)
             .push(edit_control_button)
+            .push(delete_button)
+
+            .into()
+    }
+}
+
+#[derive(Debug)]
+pub struct SubprogramIOConditionsView {
+    io_element_list: pick_list::State<String>,
+    state_list: pick_list::State<IOElementStates>,
+    delete_button: button::State,
+    io_condition: Rc<RefCell<IOElementCoditions>>,
+    io_list: Vec<String>,
+}
+
+impl<'a> SubprogramIOConditionsView {
+    pub fn new(io_condition: Rc<RefCell<IOElementCoditions>>) -> Self {
+        SubprogramIOConditionsView {
+            io_element_list: pick_list::State::default(),
+            state_list: pick_list::State::default(),
+            delete_button: button::State::new(),
+            io_condition: io_condition.clone(),
+            io_list: vec![],
+        }
+    }
+
+    fn get_names_list(io_list: &'a Vec<Rc<RefCell<IOElement>>>) -> Vec<String> {
+        let mut name_list: Vec<String> = vec![];
+
+        for io_element in io_list {
+            let (name, ..) = io_element.borrow().get_data();
+            name_list.push(name.clone());
+        }
+
+        name_list
+    }
+
+    pub fn view(&'a mut self) -> Element<'a, IOElementCoditionsMessage> {
+        let (io_element, state, frame_type) = self.io_condition.borrow().get_data();
+        let io_config = unsafe {
+            &IO_CONFIG
+        }.as_ref().unwrap();
+        let io_list = io_config.borrow().get_elements_by_frame_type(frame_type);
+
+        let (name, ..) = if io_element != None {
+            io_element.unwrap().borrow().get_data()
+        } else {
+            io_list.first().unwrap().borrow().get_data()
+        };
+
+        let io_element_list = PickList::new(
+            &mut self.io_element_list,
+            Self::get_names_list(&io_list),
+            Some(name),
+            IOElementCoditionsMessage::IOElementSelected
+        );
+
+        let state_list = PickList::new(
+            &mut self.state_list,
+            IO_STATES_ALL,
+            Some(state),
+            IOElementCoditionsMessage::StateChanged
+        );
+
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
+
+        let delete_button = Button::new(&mut self.delete_button, delete_icon())
+            .on_press(IOElementCoditionsMessage::DeleteElement(frame_type));
+
+        Row::new()
+            .spacing(DEFAULT_SPACING)
+            .push(Column::new()
+                .push(Text::new(config.get_field(FIELD_SIGNAL).to_string()
+                                                              .as_str()))
+                .push(io_element_list))
+            .push(Column::new()
+                .push(Text::new(config.get_field(FIELD_TYPE_STATE).to_string()
+                                                              .as_str()))
+                .push(state_list))
             .push(delete_button)
 
             .into()

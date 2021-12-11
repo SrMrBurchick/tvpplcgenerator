@@ -2,7 +2,7 @@ use iced::{Font, Length, Text, HorizontalAlignment};
 use json::{self, JsonValue};
 use std::{collections::HashMap, fs::File, io::BufReader, io::Read, rc::Rc};
 
-use crate::configuration::language_pack_conastants::{FIELD_TYPE_STATE, FIELD_TYPE_CONTROL, FIELD_SIGNAL_INPUT, FIELD_SIGNAL_OUTPUT, SUBPROGRAM_TYPE_DEFAULT, SUBPROGRAM_TYPE_CRITICAL, SUBPROGRAM_TYPE_BLOCKED};
+use crate::configuration::language_pack_conastants::{FIELD_TYPE_STATE, FIELD_TYPE_CONTROL, FIELD_SIGNAL_INPUT, FIELD_SIGNAL_OUTPUT, SUBPROGRAM_TYPE_DEFAULT, SUBPROGRAM_TYPE_CRITICAL, SUBPROGRAM_TYPE_BLOCKED, IO_STATE_ACTIVE, IO_STATE_INACTIVE, IO_STATE_ANY};
 
 use self::language_pack_conastants::DEFAULT;
 
@@ -76,6 +76,10 @@ pub mod language_pack_conastants {
     pub static SUBPROGRAM_TYPE_BLOCKED: &str = "SUBPROGRAM_TYPE_BLOCKED";
     pub static SUBPROGRAM_TYPE_CRITICAL: &str = "SUBPROGRAM_TYPE_CRITICAL";
     pub static SUBPROGRAM_TYPE_DEFAULT: &str = "SUBPROGRAM_TYPE_DEFAULT";
+    pub static IO_STATE_ACTIVE: &str = "IO_STATE_ACTIVE";
+    pub static IO_STATE_INACTIVE: &str = "IO_STATE_INACTIVE";
+    pub static IO_STATE_ANY: &str = "IO_STATE_ANY";
+
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -297,6 +301,28 @@ impl std::fmt::Display for SubprogramTypes {
                 SubprogramTypes::Dflt => deafult_string.as_str(),
                 SubprogramTypes::Critical => critical_string.as_str(),
                 SubprogramTypes::Blocked => blocked_string.as_str(),
+            }
+        )
+    }
+}
+
+impl std::fmt::Display for IOElementStates {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
+
+        let active_string = config.get_field(IO_STATE_ACTIVE).to_string();
+        let inactive_string = config.get_field(IO_STATE_INACTIVE).to_string();
+        let any_string = config.get_field(IO_STATE_ANY).to_string();
+
+        write!(
+            f,
+            "{}",
+            match self {
+                IOElementStates::Active => active_string.as_str(),
+                IOElementStates::Inactive => inactive_string.as_str(),
+                IOElementStates::Any => any_string.as_str(),
             }
         )
     }

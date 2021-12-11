@@ -9,7 +9,7 @@ use iced::{
 mod configuration;
 use configuration:: {
     Config, language_pack_conastants::{BUTTON_NEXT, BUTTON_BACK}, GLOBAL_CONFIG,
-    style_config::{self, FONT_SIZE, DEFAULT_PADDING}
+    style_config::{self, FONT_SIZE, DEFAULT_PADDING}, FrameTypes
 };
 use view::{PresetViewMessage, PresetViews};
 
@@ -59,7 +59,9 @@ impl Application for Generator {
                         create_new_button: button::State::new(),
                         subprograms: vec![],
                         state: SubprogramConfigStetes::SubprogramConfigState,
-                        subprogramsteps: vec![]
+                        subprogramsteps: vec![],
+                        conditions: vec![],
+                        conditions_type: FrameTypes::State
                     }
                 ],
                 next_preset: button::State::new(),
@@ -102,6 +104,9 @@ impl Application for Generator {
                         match state {
                             SubprogramConfigStetes::SubprogramEditState => {
                                 *state = SubprogramConfigStetes::SubprogramConfigState;
+                            },
+                            SubprogramConfigStetes::SubprogramStepConditonsPick => {
+                                *state = SubprogramConfigStetes::SubprogramEditState
                             },
                             _ => {
                                 self.active_preset -= 1;

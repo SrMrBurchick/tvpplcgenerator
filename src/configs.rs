@@ -107,6 +107,22 @@ impl IOConfig {
         elements
     }
 
+    pub fn get_elelment_by_name(
+        &self, name: String
+    ) -> Option<Rc<RefCell<IOElement>>> {
+        let mut element = None;
+
+        for io_element in self.elements.clone() {
+            let (io_name, ..) = io_element.borrow().get_data();
+
+            if io_name == name {
+                element = Some(io_element.clone());
+            }
+        }
+
+        element
+    }
+
     pub fn get_all_elelments(&self) -> Vec<Rc<RefCell<IOElement>>> {
         self.elements.clone()
     }
@@ -147,24 +163,25 @@ impl IOConfig {
 
 #[derive(Debug, Clone)]
 pub enum IOElementCoditionsMessage {
-    AddNewElement,
-    DeleteElement,
+    DeleteElement(FrameTypes),
     IOElementMessage(usize, IOElementMessage),
     StateChanged(IOElementStates),
-    IOElementChanged(),
+    IOElementSelected(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IOElementCoditions {
     element: Option<Rc<RefCell<IOElement>>>,
     state: IOElementStates,
+    frame_type: FrameTypes,
 }
 
 impl IOElementCoditions {
-    pub fn new() -> Self {
+    pub fn new(frame_type: FrameTypes) -> Self {
         IOElementCoditions {
             element: None,
             state: IOElementStates::Any,
+            frame_type: frame_type
         }
     }
 
@@ -173,12 +190,19 @@ impl IOElementCoditions {
             IOElementCoditionsMessage::StateChanged(state) => {
                 self.state = state
             },
+            IOElementCoditionsMessage::IOElementSelected(name) => {
+                let io_config = unsafe {
+                    &IO_CONFIG
+                }.as_ref().unwrap();
+
+                self.element = io_config.borrow().get_elelment_by_name(name)
+            }
             _ => {}
         }
     }
 
-    pub fn get_data(&self) -> (Option<Rc<RefCell<IOElement>>>, IOElementStates) {
-        (self.element.clone(), self.state.clone())
+    pub fn get_data(&self) -> (Option<Rc<RefCell<IOElement>>>, IOElementStates, FrameTypes) {
+        (self.element.clone(), self.state.clone(), self.frame_type)
     }
 
 }
@@ -187,10 +211,9 @@ impl IOElementCoditions {
 pub enum SubprogramStepMessage {
     ChangeId(usize),
     DeleteStep,
-    PickControlConditions,
-    PickStateConditions,
-    EditControlConditions(usize, IOElementCoditionsMessage),
-    EditStateConditions(usize, IOElementCoditionsMessage),
+    AddCondition(FrameTypes),
+    PickConditions(FrameTypes),
+    IOElementCoditionsMessage(usize, IOElementCoditionsMessage),
     OperatorSelected(Operators),
 }
 
@@ -200,6 +223,7 @@ pub struct SubprogramStep {
     merge_operator: Operators,
     state_conditions: Vec<Rc<RefCell<IOElementCoditions>>>,
     control_conditions: Vec<Rc<RefCell<IOElementCoditions>>>,
+    pub active_condion: FrameTypes,
 }
 
 impl SubprogramStep {
@@ -209,6 +233,7 @@ impl SubprogramStep {
             merge_operator: Operators::AND,
             state_conditions: vec![],
             control_conditions: vec![],
+            active_condion: FrameTypes::State,
         }
     }
 
@@ -216,8 +241,7 @@ impl SubprogramStep {
         &mut self,
         condition :Rc<RefCell<IOElementCoditions>>
     ) {
-        let (element, _) = condition.as_ref().borrow().get_data();
-        let (_, frame_type, _, _) = element.unwrap().borrow().get_data();
+        let (_, _, frame_type) = condition.as_ref().borrow().get_data();
 
         match frame_type {
             FrameTypes::State => {
@@ -242,6 +266,19 @@ impl SubprogramStep {
         }
     }
 
+    pub fn get_last_condition(
+        &self, frame_type: FrameTypes
+    ) -> Rc<RefCell<IOElementCoditions>> {
+        match frame_type {
+            FrameTypes::State => {
+                self.state_conditions.last().unwrap().clone()
+            },
+            FrameTypes::Control => {
+                self.control_conditions.last().unwrap().clone()
+            }
+        }
+    }
+
     pub fn get_data(&self) -> (
         usize, Operators, Vec<Rc<RefCell<IOElementCoditions>>>,
         Vec<Rc<RefCell<IOElementCoditions>>>
@@ -262,43 +299,38 @@ impl SubprogramStep {
             SubprogramStepMessage::ChangeId(id) => {
                 self.id = id
             },
+            SubprogramStepMessage::AddCondition(frame_type) => {
+                self.add_new_conditon(Rc::new(RefCell::new(IOElementCoditions::new(frame_type))))
+            }
             SubprogramStepMessage::OperatorSelected(operator) => {
                 self.merge_operator = operator
             },
-            SubprogramStepMessage::EditStateConditions(i, message) => {
+            SubprogramStepMessage::IOElementCoditionsMessage(i, message) => {
                 match message {
-                    IOElementCoditionsMessage::DeleteElement => {
-                        self.state_conditions.remove(i);
-                    },
-                    IOElementCoditionsMessage::AddNewElement => {
-                        self.state_conditions.push(
-                            Rc::new(
-                                RefCell::new(IOElementCoditions::new()
-                            )));
-                    },
-                    _ => {
-                        if let Some(condition) = self.state_conditions.get_mut(i) {
-                            let mut mut_condition = condition.borrow_mut();
-                            mut_condition.update(message);
+                    IOElementCoditionsMessage::DeleteElement(frame_type) => {
+                        match frame_type {
+                            FrameTypes::State => {
+                                self.state_conditions.remove(i);
+                            },
+                            FrameTypes::Control => {
+                                self.control_conditions.remove(i);
+                            }
                         }
-                    }
-                }
-            },
-            SubprogramStepMessage::EditControlConditions(i, message) => {
-                match message {
-                    IOElementCoditionsMessage::DeleteElement => {
-                        self.control_conditions.remove(i);
-                    },
-                    IOElementCoditionsMessage::AddNewElement => {
-                        self.control_conditions.push(
-                            Rc::new(
-                                RefCell::new(IOElementCoditions::new()
-                            )));
                     },
                     _ => {
-                        if let Some(condition) = self.control_conditions.get_mut(i) {
-                            let mut mut_condition = condition.borrow_mut();
-                            mut_condition.update(message);
+                        match self.active_condion {
+                            FrameTypes::State => {
+                                if let Some(condition) = self.state_conditions.get_mut(i) {
+                                    let mut mut_condition = condition.borrow_mut();
+                                    mut_condition.update(message);
+                                }
+                            },
+                            FrameTypes::Control => {
+                                if let Some(condition) = self.control_conditions.get_mut(i) {
+                                    let mut mut_condition = condition.borrow_mut();
+                                    mut_condition.update(message);
+                                }
+                            }
                         }
                     }
                 }
@@ -322,6 +354,7 @@ pub struct Subprogram {
     name: String,
     priority_type: SubprogramTypes,
     steps: Vec<Rc<RefCell<SubprogramStep>>>,
+    current_step_edit: usize
 }
 
 impl Subprogram {
@@ -331,11 +364,20 @@ impl Subprogram {
             name: String::new(),
             priority_type: SubprogramTypes::Dflt,
             steps: vec![],
+            current_step_edit: 0
         }
     }
 
     pub fn get_data(&self) -> (usize, String, SubprogramTypes, Vec<Rc<RefCell<SubprogramStep>>>) {
         (self.address, self.name.clone(), self.priority_type, self.steps.clone())
+    }
+
+    pub fn get_current_editable_step_id(&self) -> usize {
+        self.current_step_edit
+    }
+
+    pub fn get_current_editable_step(&self) -> Rc<RefCell<SubprogramStep>> {
+        self.steps.get(self.current_step_edit).unwrap().clone()
     }
 
     pub fn get_step(&self, id: usize) -> Rc<RefCell<SubprogramStep>> {
@@ -356,6 +398,7 @@ impl Subprogram {
     ) {
         match message {
             SubprogramMessage::SubprogramStepMessage(i, message) => {
+                self.current_step_edit = i;
                 match message {
                     SubprogramStepMessage::DeleteStep => {
                         self.steps.remove(i);
