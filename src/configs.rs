@@ -6,6 +6,7 @@ use crate::configuration:: {
 
 pub static mut IO_CONFIG: Option<Rc<RefCell<IOConfig>>> = None;
 pub static mut SUBPROGRAMS_CONFIG: Option<Rc<RefCell<SubprogramConfig>>> = None;
+pub static mut CONDTIONS_CONFIG: Option<Rc<RefCell<CondtionsConfig>>> = None;
 
 #[derive(Debug, Clone)]
 pub enum IOElementMessage {
@@ -489,6 +490,10 @@ impl SubprogramConfig {
         self.subprograms.get(id).unwrap().clone()
     }
 
+    pub fn get_last_address(&self) -> usize {
+        self.last_address
+    }
+
     pub fn update_addresses(&mut self) {
         self.last_address = 1;
         for i in 0..self.subprograms.len() {
@@ -531,5 +536,228 @@ impl SubprogramConfig {
         self.update_addresses();
     }
 
+}
+
+
+#[derive(Debug, Clone)]
+pub enum ConditionsConfigElementMessage {
+    DeleteCondition,
+    AddCondition(FrameTypes),
+    PickConditions(FrameTypes),
+    IOElementCoditionsMessage(usize, IOElementCoditionsMessage),
+    CriticalPicked(bool),
+    BlockedPicked(bool),
+    DescriptionChanged(String),
+    AddressSelected(usize)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConditionsConfigElement {
+    description: String,
+    state_conditions: Vec<Rc<RefCell<IOElementCoditions>>>,
+    control_conditions: Vec<Rc<RefCell<IOElementCoditions>>>,
+    pub active_condion: FrameTypes,
+    critical: bool,
+    blocked: bool,
+    address: usize
+}
+
+impl ConditionsConfigElement {
+    pub fn new() -> Self {
+        ConditionsConfigElement {
+            description: String::new(),
+            state_conditions: vec![],
+            control_conditions: vec![],
+            active_condion: FrameTypes::State,
+            critical: false,
+            blocked: false,
+            address: 0
+        }
+    }
+
+    pub fn add_new_conditon(
+        &mut self,
+        condition :Rc<RefCell<IOElementCoditions>>
+    ) {
+        let (_, _, frame_type) = condition.as_ref().borrow().get_data();
+
+        match frame_type {
+            FrameTypes::State => {
+                self.state_conditions.push(condition.clone())
+            },
+            FrameTypes::Control => {
+                self.control_conditions.push(condition.clone())
+            }
+        }
+    }
+
+    pub fn get_conditions(
+        &self, frame_type: FrameTypes
+    ) -> Vec<Rc<RefCell<IOElementCoditions>>> {
+        match frame_type {
+            FrameTypes::State => {
+                self.state_conditions.clone()
+            },
+            FrameTypes::Control => {
+                self.control_conditions.clone()
+            }
+        }
+    }
+
+    pub fn get_last_condition(
+        &self, frame_type: FrameTypes
+    ) -> Rc<RefCell<IOElementCoditions>> {
+        match frame_type {
+            FrameTypes::State => {
+                self.state_conditions.last().unwrap().clone()
+            },
+            FrameTypes::Control => {
+                self.control_conditions.last().unwrap().clone()
+            }
+        }
+    }
+
+    pub fn get_data(&self) -> (
+        String, Vec<Rc<RefCell<IOElementCoditions>>>,
+        Vec<Rc<RefCell<IOElementCoditions>>>, bool, bool, usize
+    ) {
+        (
+            self.description.clone(),
+            self.state_conditions.clone(),
+            self.control_conditions.clone(),
+            self.blocked,
+            self.critical,
+            self.address
+        )
+    }
+
+    pub fn update(
+        &mut self,
+        message: ConditionsConfigElementMessage
+    ) {
+        match message {
+            ConditionsConfigElementMessage::AddCondition(frame_type) => {
+                self.add_new_conditon(Rc::new(RefCell::new(IOElementCoditions::new(frame_type))))
+            }
+            ConditionsConfigElementMessage::CriticalPicked(state) => {
+                self.critical = state
+            },
+            ConditionsConfigElementMessage::BlockedPicked(state) => {
+                self.blocked = state
+            },
+            ConditionsConfigElementMessage::DescriptionChanged(new_descr) => {
+                self.description = new_descr
+            },
+            ConditionsConfigElementMessage::AddressSelected(address) => {
+                self.address = address
+            },
+            ConditionsConfigElementMessage::IOElementCoditionsMessage(i, message) => {
+                match message {
+                    IOElementCoditionsMessage::DeleteElement(frame_type) => {
+                        match frame_type {
+                            FrameTypes::State => {
+                                self.state_conditions.remove(i);
+                            },
+                            FrameTypes::Control => {
+                                self.control_conditions.remove(i);
+                            }
+                        }
+                    },
+                    _ => {
+                        match self.active_condion {
+                            FrameTypes::State => {
+                                if let Some(condition) = self.state_conditions.get_mut(i) {
+                                    let mut mut_condition = condition.borrow_mut();
+                                    mut_condition.update(message);
+                                }
+                            },
+                            FrameTypes::Control => {
+                                if let Some(condition) = self.control_conditions.get_mut(i) {
+                                    let mut mut_condition = condition.borrow_mut();
+                                    mut_condition.update(message);
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            _ => ()
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum CondtionsConfigStetes {
+    CondtionsConfigState,
+    IOConditonsPick,
+}
+
+#[derive(Debug, Clone)]
+pub enum CondtionsConfigMessage {
+    AddNewConditons,
+    ConditionsConfigElementMessage(usize, ConditionsConfigElementMessage),
+}
+
+#[derive(Debug, Clone)]
+pub struct CondtionsConfig {
+    conditions: Vec<Rc<RefCell<ConditionsConfigElement>>>,
+    current_condition_edit: usize,
+    pub state: CondtionsConfigStetes,
+}
+
+impl CondtionsConfig {
+    pub fn new() -> Self {
+        CondtionsConfig {
+            current_condition_edit: 0,
+            conditions: vec![],
+            state: CondtionsConfigStetes::CondtionsConfigState
+        }
+    }
+
+    pub fn get_last_condtions(&self) -> Rc<RefCell<ConditionsConfigElement>> {
+        self.conditions.last().unwrap().clone()
+    }
+
+    pub fn get_current_editable_subprogram(&self) -> Rc<RefCell<ConditionsConfigElement>> {
+        self.conditions.get(self.current_condition_edit).unwrap().clone()
+    }
+
+    pub fn get_current_editable_id(&self) -> usize {
+        self.current_condition_edit
+    }
+
+    pub fn get_conditon(&self, id: usize) -> Rc<RefCell<ConditionsConfigElement>> {
+        self.conditions.get(id).unwrap().clone()
+    }
+
+    pub fn update(
+        &mut self,
+        message: CondtionsConfigMessage
+    ) {
+        match message {
+            CondtionsConfigMessage::ConditionsConfigElementMessage(i, message) => {
+                match message {
+                    ConditionsConfigElementMessage::DeleteCondition => {
+                        self.conditions.remove(i);
+                    },
+                    ConditionsConfigElementMessage::PickConditions(_) => {
+                        self.current_condition_edit = i;
+                    },
+                    _ => {
+                        if let Some(condition) = self.conditions.get_mut(i) {
+                            let mut mut_condition = condition.borrow_mut();
+                            mut_condition.update(message);
+                        }
+                    }
+                }
+            },
+            CondtionsConfigMessage::AddNewConditons => {
+                self.conditions.push(Rc::new(
+                        RefCell::new(ConditionsConfigElement::new())
+                ));
+            },
+            _ => (),
+        }
+    }
 }
 

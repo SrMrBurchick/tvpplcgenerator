@@ -9,15 +9,21 @@ use crate::{configuration:: {
     },
     style_config::{DEFAULT_PADDING, DEFAULT_SPACING, FONT_SIZE, self},
     GLOBAL_CONFIG, FrameTypes
-}, subprogramview::{SubprogramIOConditionsView, SubprogramDescriptionEditView}, configs::IOElementCoditionsMessage};
+}, configs::{CONDTIONS_CONFIG, CondtionsConfigStetes}};
 
 use crate::ioconfigview::{IOElementView};
 use crate::configs::{
     SubprogramConfigMessage, SUBPROGRAMS_CONFIG,
     SubprogramConfigStetes, IOConfigMessage, IO_CONFIG, IOElementMessage,
-    SubprogramStepMessage, SubprogramMessage
+    SubprogramStepMessage, SubprogramMessage,
+    IOElementCoditionsMessage, CondtionsConfigMessage,
+    ConditionsConfigElementMessage
 };
-use crate::subprogramview::{SubprogramView, SubprogramStepView};
+use crate::subprogramview::{
+    SubprogramIOConditionsView, SubprogramDescriptionEditView,
+    SubprogramView, SubprogramStepView
+};
+use crate::conditionsview::ConditonsElementView;
 
 #[derive(Debug, Clone)]
 pub enum PresetViewMessage {
@@ -25,6 +31,7 @@ pub enum PresetViewMessage {
     InputChanged(String),
     IOConfigMessage(IOConfigMessage),
     SubprogramConfigMessage(SubprogramConfigMessage),
+    CondtionsConfigMessage(CondtionsConfigMessage)
 }
 
 #[derive(Debug)]
@@ -48,6 +55,14 @@ pub enum PresetViews {
         conditions_type: FrameTypes,
         subrogramedit_view: Option<SubprogramDescriptionEditView>
     },
+    ConditionsConfigView {
+        scroll: scrollable::State,
+        create_new_button: button::State,
+        conditionsview: Vec<ConditonsElementView>,
+        ioconditionsview: Vec<SubprogramIOConditionsView>,
+        state: CondtionsConfigStetes,
+        frame_type: FrameTypes
+    }
 }
 
 fn empty_message<'a>(message: &str) -> Element<'a, IOConfigMessage> {
@@ -92,6 +107,13 @@ impl <'a> PresetViews {
                     .push(Self::subrogram_view(self)
                         .map(PresetViewMessage::SubprogramConfigMessage))
             },
+            PresetViews::ConditionsConfigView {
+                ..
+            } => {
+                Column::new()
+                    .push(Self::conditions_view(self)
+                        .map(PresetViewMessage::CondtionsConfigMessage))
+            }
 
         }
         .into()
@@ -102,6 +124,7 @@ impl <'a> PresetViews {
             PresetViews::EntryView {..} => Self::entry_view_update(message),
             PresetViews::IOConfigView {elements, ..} => Self::ioconfig_view_update(elements, message),
             PresetViews::SubprogramConfigView {..} => Self::subprogram_view_update(self, message),
+            PresetViews::ConditionsConfigView {..} => Self::conditions_view_update(self, message)
         }
     }
 
@@ -674,4 +697,283 @@ impl <'a> PresetViews {
             .push(element.view())
         .into()
     }
+
+    fn conditions_ioconfig_view(
+        scroll: &'a mut scrollable::State,
+        create_new_button: &'a mut button::State,
+        elements: &'a mut Vec<SubprogramIOConditionsView>,
+        conditions_type: FrameTypes,
+    ) -> Element<'a, ConditionsConfigElementMessage> {
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
+
+
+        let add_new = Column::new()
+                  .align_items(Align::Center)
+                  .width(Length::Fill)
+                  .push(Button::new(create_new_button,
+                              Text::new(config.get_field(BUTTON_ADD_NEW)
+                                        .to_string().as_str())
+                              .size(FONT_SIZE))
+                        .style(style_config::Button::Primary)
+                        .on_press(ConditionsConfigElementMessage::AddCondition(conditions_type)));
+
+        let elements_view: Element<_> = if elements.len() > 0 {
+                elements
+                    .iter_mut()
+                    .enumerate()
+                    .fold(Column::new().spacing(20), |column, (i, element)| {
+                        column.push(element.view().map(move |message| {
+                            ConditionsConfigElementMessage::IOElementCoditionsMessage(i, message)
+                        }))
+                    })
+                .into()
+        } else {
+            Container::new(
+                Text::new(config.get_field(IOCONFIG_EMPTY).to_string().as_str())
+                    .width(Length::Fill)
+                    .size(25)
+                    .horizontal_alignment(HorizontalAlignment::Center)
+                    .color([0.7, 0.7, 0.7]),
+            )
+            .width(Length::Fill)
+            .center_x()
+            .center_y()
+            .into()
+        };
+
+
+        let scrollable = Scrollable::new(scroll)
+            .align_items(Align::Start)
+            .spacing(DEFAULT_SPACING)
+            .padding(DEFAULT_PADDING)
+            .push(Column::new()
+                    .push(Container::new(elements_view))
+                    .width(Length::Fill)
+                    .align_items(Align::Center))
+            .push(add_new);
+
+
+        Column::new()
+            .width(Length::Fill)
+            .align_items(Align::Center)
+            .push(scrollable)
+        .into()
+    }
+
+    fn conditions_config_view(
+        create_new_button: &'a mut button::State,
+        scroll: &'a mut scrollable::State,
+        condions: &'a mut Vec<ConditonsElementView>,
+    ) -> Column<'a, CondtionsConfigMessage> {
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
+
+        let add_new = Column::new()
+                  .align_items(Align::Center)
+                  .width(Length::Fill)
+                  .push(Button::new(create_new_button,
+                              Text::new(config.get_field(BUTTON_ADD_NEW)
+                                        .to_string().as_str())
+                              .size(FONT_SIZE))
+                        .style(style_config::Button::Primary)
+                        .on_press(CondtionsConfigMessage::AddNewConditons));
+
+        let condions: Element<_> = if condions.len() > 0 {
+                condions
+                    .iter_mut()
+                    .enumerate()
+                    .fold(Column::new().spacing(20), |column, (i, element)| {
+                        column.push(element.view().map(move |message| {
+                            CondtionsConfigMessage::ConditionsConfigElementMessage(i, message)
+                        }))
+                    })
+                .into()
+        } else {
+            Container::new(
+                Text::new(config.get_field(IOCONFIG_EMPTY).to_string().as_str())
+                    .width(Length::Fill)
+                    .size(25)
+                    .horizontal_alignment(HorizontalAlignment::Center)
+                    .color([0.7, 0.7, 0.7]),
+            )
+            .width(Length::Fill)
+            .center_x()
+            .center_y()
+            .into()
+        };
+
+
+        let scrollable = Scrollable::new(scroll)
+            .align_items(Align::Start)
+            .spacing(DEFAULT_SPACING)
+            .padding(DEFAULT_PADDING)
+            .push(Column::new()
+                    .push(Container::new(condions))
+                    .width(Length::Fill)
+                    .align_items(Align::Center))
+            .push(add_new);
+
+
+        Column::new()
+            .width(Length::Fill)
+            .align_items(Align::Center)
+            .push(scrollable)
+        .into()
+    }
+
+    fn conditions_ioconfig_view_update(
+        elements: &'a mut Vec<SubprogramIOConditionsView>,
+        message: ConditionsConfigElementMessage,
+    ) {
+        match message {
+            ConditionsConfigElementMessage::IOElementCoditionsMessage(i, io_message) => {
+                match io_message {
+                    IOElementCoditionsMessage::DeleteElement(_) => {
+                        elements.remove(i);
+                    },
+                    _ => ()
+                }
+            },
+            ConditionsConfigElementMessage::AddCondition(frame_type) => {
+                elements.push(SubprogramIOConditionsView::new(
+                                unsafe{&CONDTIONS_CONFIG}.as_ref().unwrap().borrow()
+                                .get_current_editable_subprogram().borrow()
+                                .get_last_condition(frame_type)
+                            ))
+            },
+            _ => ()
+        }
+    }
+
+    fn conditions_config_view_update(
+        elements: &'a mut Vec<ConditonsElementView>,
+        state: &'a mut CondtionsConfigStetes,
+        conditions_type: &'a mut FrameTypes,
+        message: CondtionsConfigMessage
+    ) {
+        match message {
+            CondtionsConfigMessage::ConditionsConfigElementMessage(i, message) => {
+                match message {
+                    ConditionsConfigElementMessage::DeleteCondition => {
+                        elements.remove(i);
+                    },
+                    ConditionsConfigElementMessage::PickConditions(frame_type) => {
+                        *state = CondtionsConfigStetes::IOConditonsPick;
+                        *conditions_type = frame_type;
+                        unsafe{&CONDTIONS_CONFIG}.as_ref().unwrap().borrow_mut()
+                            .get_current_editable_subprogram().borrow_mut()
+                            .active_condion = frame_type;
+
+                    }
+                    _ => ()
+                }
+            },
+            CondtionsConfigMessage::AddNewConditons => {
+                elements.push(ConditonsElementView::new(
+                                unsafe{&CONDTIONS_CONFIG}.as_ref().unwrap()
+                                .borrow().get_last_condtions()
+                            ))
+            },
+            _ => ()
+        }
+    }
+
+    fn conditions_view_update(
+        view: &'a mut PresetViews,
+        message: PresetViewMessage,
+    ) {
+        match message {
+            PresetViewMessage::CondtionsConfigMessage(message) => {
+                let config = unsafe {
+                    &CONDTIONS_CONFIG
+                }.as_ref().unwrap();
+
+                config.borrow_mut().update(message.clone());
+
+                match view {
+                    PresetViews::ConditionsConfigView {
+                        conditionsview, ioconditionsview,
+                        state, frame_type, ..
+                    } => {
+                        match state {
+                            CondtionsConfigStetes::CondtionsConfigState => {
+                                Self::conditions_config_view_update(
+                                    conditionsview, state, frame_type, message
+                                );
+                            },
+                            CondtionsConfigStetes::IOConditonsPick => {
+                                match message {
+                                    CondtionsConfigMessage::ConditionsConfigElementMessage(_i, message) => {
+                                        Self::conditions_ioconfig_view_update(ioconditionsview, message)
+                                    },
+                                    _ => (),
+                                }
+                            },
+                            _ => (),
+                        }
+
+                    },
+                    _ => ()
+                }
+            },
+            _ => ()
+        }
+    }
+
+    fn conditions_view(
+        view: &'a mut PresetViews
+    ) -> Element<'a, CondtionsConfigMessage> {
+        match view {
+            PresetViews::ConditionsConfigView {
+                scroll,
+                create_new_button,
+                state,
+                ioconditionsview,
+                frame_type,
+                conditionsview
+            } => {
+                match state {
+                    CondtionsConfigStetes::CondtionsConfigState => {
+                        ioconditionsview.clear();
+
+                        Self::conditions_config_view(create_new_button, scroll, conditionsview).into()
+                    },
+                    CondtionsConfigStetes::IOConditonsPick => {
+                        let conditionsconfig= unsafe {
+                            &CONDTIONS_CONFIG
+                        }.as_ref().unwrap();
+                        let condtion_id = conditionsconfig.borrow()
+                            .get_current_editable_id();
+
+                        if 0 == ioconditionsview.len() {
+                            let conditions_borowed = conditionsconfig.borrow()
+                                .get_current_editable_subprogram().borrow()
+                                .get_conditions(*frame_type);
+
+                            for condition in conditions_borowed {
+                                ioconditionsview.push(SubprogramIOConditionsView::new(condition))
+                            }
+                        }
+
+                        Self::conditions_ioconfig_view(
+                            scroll, create_new_button, ioconditionsview,
+                            *frame_type
+                        )
+                        .map(move |message| {
+                            CondtionsConfigMessage::ConditionsConfigElementMessage(
+                                condtion_id,
+                                message
+                            )
+                        })
+                    },
+                    _ => Column::new().into()
+                }
+            },
+            _ => Column::new().into()
+        }
+    }
+
 }

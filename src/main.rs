@@ -1,6 +1,6 @@
 use std::{rc::Rc, cell::RefCell};
 
-use configs::{IOConfig, IO_CONFIG, SUBPROGRAMS_CONFIG, SubprogramConfig, SubprogramConfigStetes};
+use configs::{IOConfig, IO_CONFIG, SUBPROGRAMS_CONFIG, SubprogramConfig, SubprogramConfigStetes, CONDTIONS_CONFIG, CondtionsConfig, CondtionsConfigStetes};
 use iced::{
     button, executor, Align, Application, Button, Clipboard, Column, Command,
     Container, Element, Length, Settings, Text, scrollable, Row, Space
@@ -17,6 +17,7 @@ use view::{PresetViewMessage, PresetViews};
 mod view;
 mod ioconfigview;
 mod subprogramview;
+mod conditionsview;
 mod configs;
 
 #[derive(Debug, Clone)]
@@ -64,7 +65,15 @@ impl Application for Generator {
                         conditions: vec![],
                         conditions_type: FrameTypes::State,
                         subrogramedit_view: None
-                    }
+                    },
+                    PresetViews::ConditionsConfigView {
+                        scroll: scrollable::State::new(),
+                        create_new_button: button::State::new(),
+                        state: configs::CondtionsConfigStetes::CondtionsConfigState,
+                        conditionsview: vec![],
+                        frame_type: FrameTypes::State,
+                        ioconditionsview: vec![]
+                    },
                 ],
                 next_preset: button::State::new(),
                 back_preset: button::State::new(),
@@ -114,6 +123,18 @@ impl Application for Generator {
                             }
                         }
                     },
+                    PresetViews::ConditionsConfigView {state, ..} => {
+                        match state {
+                            CondtionsConfigStetes::IOConditonsPick => {
+                                *state = CondtionsConfigStetes::CondtionsConfigState;
+                            },
+                            _ => {
+                                if (self.active_preset + 1) < self.presets.len() {
+                                    self.active_preset += 1
+                                }
+                            }
+                        }
+                    },
                     _ => {
                         if (self.active_preset + 1) < self.presets.len() {
                             self.active_preset += 1
@@ -139,6 +160,17 @@ impl Application for Generator {
                             }
                         }
                     },
+                    PresetViews::ConditionsConfigView {state, ..} => {
+                        match state {
+                            CondtionsConfigStetes::IOConditonsPick => {
+                                *state = CondtionsConfigStetes::CondtionsConfigState;
+                            },
+                            _ => {
+                                self.active_preset -= 1
+                            }
+                        }
+                    },
+
                     _ => {
                         self.active_preset -= 1;
                     }
@@ -192,7 +224,8 @@ fn init() {
     unsafe {
         GLOBAL_CONFIG = Some(Rc::new(Config::new()));
         IO_CONFIG = Some(Rc::new(RefCell::new(IOConfig::new())));
-        SUBPROGRAMS_CONFIG = Some(Rc::new(RefCell::new(SubprogramConfig::new())))
+        SUBPROGRAMS_CONFIG = Some(Rc::new(RefCell::new(SubprogramConfig::new())));
+        CONDTIONS_CONFIG = Some(Rc::new(RefCell::new(CondtionsConfig::new())));
     }
 }
 
