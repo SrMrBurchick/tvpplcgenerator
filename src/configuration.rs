@@ -89,6 +89,10 @@ pub mod language_pack_conastants {
     pub static TABLE_SHEET_SUBPROGRAMS: &str = "TABLE_SHEET_SUBPROGRAMS";
     pub static TABLE_CONTENT_SIGN_OF_FINISH: &str = "TABLE_CONTENT_SIGN_OF_FINISH";
     pub static TABLE_CONTENT_SUBPROGRAM_INITIAL: &str = "TABLE_CONTENT_SUBPROGRAM_INITIAL";
+    pub static CONDITIONS_CONFIG_EMPTY: &str = "CONDITIONS_CONFIG_EMPTY";
+    pub static SUBPROGRAM_CONFIG_EMPTY: &str = "SUBPROGRAM_CONFIG_EMPTY";
+    pub static SUBPROGRAM_STEPS_EMPTY: &str = "SUBPROGRAM_STEPS_EMPTY";
+
 }
 
 #[derive(Debug, PartialEq, Eq)]

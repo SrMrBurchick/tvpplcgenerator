@@ -1,7 +1,9 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::slice::SliceIndex;
 
 use crate::configs::{
-    IO_CONFIG, SUBPROGRAMS_CONFIG, CONDTIONS_CONFIG
+    IO_CONFIG, SUBPROGRAMS_CONFIG, CONDTIONS_CONFIG, IOElementCoditions, IOElement
 };
 use crate::configuration::language_pack_conastants::{TABLE_SHEET_CONDITIONS, TABLE_CONTENT_DESCRIPTION, TABLE_CONTENT_SENSOR_STATES, TABLE_CONTENT_CONTROL_STATES, TABLE_CONTENT_SIGN_OF_TRANSITION, TABLE_CONTENT_TRASITION_ADDRESS, TABLE_CONTENT_SIGN_OF_BLOCKING, TABLE_SHEET_SUBPROGRAMS, FIELD_ADDRESS, OPERATOR, TABLE_CONTENT_SIGN_OF_FINISH, TABLE_CONTENT_SUBPROGRAM_INITIAL};
 use crate::configuration:: {
@@ -19,6 +21,43 @@ static STATE_BLOCKED: &str = "11";
 
 static OPERATOR_AND: &str = "&";
 static OPERATOR_OR: &str = "|";
+
+fn get_conditions_state<'a>(
+    conditions: &'a Vec<Rc<RefCell<IOElementCoditions>>>,
+    element: &'a Rc<RefCell<IOElement>>
+) -> String {
+
+    let mut content = String::new();
+
+    for condition in conditions {
+        let (io_element, state_type, _) = condition.borrow().get_data();
+
+        if io_element != None {
+            let (name_first, ..) = io_element.unwrap().borrow().get_data();
+            let (name_second, ..) = element.borrow().get_data();
+
+            if name_first == name_second {
+                println!("Matched: state conditons {} and {}", name_first, name_second);
+                match state_type {
+                    IOElementStates::Active => {
+                        content = String::from(STATE_ACTIVE);
+                    },
+                    IOElementStates::Inactive => {
+                        content = String::from(STATE_INACTIVE);
+                    },
+                    IOElementStates::Any => {
+                        content = String::from(STATE_ANY);
+                    }
+                }
+
+                break;
+            }
+        }
+    }
+
+    content.clone()
+
+}
 
 fn fill_condtions_sheet<'a>(
     conditions_sheet: &'a mut Worksheet,
@@ -104,7 +143,7 @@ fn fill_condtions_sheet<'a>(
         conditions_sheet.write_number(
             states_number_offset_row,
             description_offset_col + index as u16,
-            index as f64, Some(default_format)
+            index as f64, Some(description_format)
         )?;
 
         index += 1;
@@ -122,7 +161,7 @@ fn fill_condtions_sheet<'a>(
         conditions_sheet.write_number(
             states_number_offset_row,
             state_elements_offset_col + index as u16,
-            index as f64, Some(default_format)
+            index as f64, Some(description_format)
         )?;
 
         index += 1;
@@ -145,32 +184,7 @@ fn fill_condtions_sheet<'a>(
         )?;
 
         for state in state_elements.clone() {
-            let mut content = String::new();
-
-            for condition in states.clone() {
-                let (io_element, state_type, _) = condition.borrow().get_data();
-
-                if io_element != None {
-                    let (name_first, ..) = io_element.unwrap().borrow().get_data();
-                    let (name_second, ..) = state.borrow().get_data();
-
-                    if name_first == name_second {
-                        match state_type {
-                            IOElementStates::Active => {
-                                content = String::from(STATE_ACTIVE);
-                            },
-                            IOElementStates::Inactive => {
-                                content = String::from(STATE_INACTIVE);
-                            },
-                            IOElementStates::Any => {
-                                content = String::from(STATE_ANY);
-                            }
-                        }
-
-                        break;
-                    }
-                }
-            }
+            let content = get_conditions_state(&states, &state);
 
             states_index += 1;
 
@@ -184,31 +198,7 @@ fn fill_condtions_sheet<'a>(
         states_index = 0;
 
         for control in control_elements.clone() {
-            let mut content = String::new();
-            for condition in controls.clone() {
-                let (io_element, state_type, _) = condition.borrow().get_data();
-
-                if None != io_element {
-                    let (name_first, ..) = io_element.unwrap().borrow().get_data();
-                    let (name_second, ..) = control.borrow().get_data();
-
-                    if name_first == name_second {
-                        match state_type {
-                            IOElementStates::Active => {
-                                content = String::from(STATE_ACTIVE);
-                            },
-                            IOElementStates::Inactive => {
-                                content = String::from(STATE_INACTIVE);
-                            },
-                            IOElementStates::Any => {
-                                content = String::from(STATE_ANY);
-                            }
-                        }
-
-                        break;
-                    }
-                }
-            }
+            let content = get_conditions_state(&controls, &control);
 
             states_index += 1;
 
@@ -332,7 +322,7 @@ fn fill_subprograms_sheet<'a>(
         subprograms_sheet.write_number(
             states_number_offset_row,
             operator_offset_col + index as u16,
-            index as f64, Some(default_format)
+            index as f64, Some(description_format)
         )?;
 
         index += 1;
@@ -350,7 +340,7 @@ fn fill_subprograms_sheet<'a>(
         subprograms_sheet.write_number(
             states_number_offset_row,
             state_elements_offset_col + index as u16,
-            index as f64, Some(default_format)
+            index as f64, Some(description_format)
         )?;
 
         index += 1;
@@ -360,11 +350,16 @@ fn fill_subprograms_sheet<'a>(
 
     index = 1;
 
-    subprograms_sheet.merge_range(
+    subprograms_sheet.write_string(
         description_offset_row + index as u32, 0,
+        "",
+        Some(description_format)
+    )?;
+    subprograms_sheet.merge_range(
+        description_offset_row + index as u32, 1,
         description_offset_row + index as u32, description_offset_col,
         config.get_field(TABLE_CONTENT_SUBPROGRAM_INITIAL).to_string().as_str(),
-        Some(description_format)
+        Some(default_format)
     )?;
     subprograms_sheet.write_number (
         description_offset_row + index as u32, address_offset_col,
@@ -423,7 +418,6 @@ fn fill_subprograms_sheet<'a>(
         )?;
 
         for step in steps {
-            let mut content = String::new();
             let (_, operator, states, controls, description) = step.borrow().get_data();
 
             states_index = 0;
@@ -448,31 +442,7 @@ fn fill_subprograms_sheet<'a>(
             )?;
 
             for state in state_elements.clone() {
-                content = String::new();
-                for condition in states.clone() {
-                    let (io_element, state_type, _) = condition.borrow().get_data();
-
-                    if None != io_element {
-                        let (name_first, ..) = state.borrow().get_data();
-                        let (name_second, ..) = io_element.unwrap().borrow().get_data();
-
-                        if name_first == name_second {
-                            match state_type {
-                                IOElementStates::Active => {
-                                    content = String::from(STATE_ACTIVE);
-                                },
-                                IOElementStates::Inactive => {
-                                    content = String::from(STATE_INACTIVE);
-                                },
-                                IOElementStates::Any => {
-                                    content = String::from(STATE_ANY);
-                                }
-                            }
-
-                            break;
-                        }
-                    }
-                }
+                let content = get_conditions_state(&states, &state);
 
                 states_index += 1;
 
@@ -486,29 +456,7 @@ fn fill_subprograms_sheet<'a>(
             states_index = 0;
 
             for control in control_elements.clone() {
-                content = String::new();
-                for condition in controls.clone() {
-                    let (io_element, state_type, _) = condition.borrow().get_data();
-
-                    if None != io_element {
-                        let (name_first, ..) = control.borrow().get_data();
-                        let (name_second, ..) = io_element.unwrap().borrow().get_data();
-
-                        if name_first == name_second {
-                            match state_type {
-                                IOElementStates::Active => {
-                                    content = String::from(STATE_ACTIVE);
-                                },
-                                IOElementStates::Inactive => {
-                                    content = String::from(STATE_INACTIVE);
-                                },
-                                IOElementStates::Any => {
-                                    content = String::from(STATE_ANY);
-                                }
-                            }
-                        }
-                    }
-                }
+                let content = get_conditions_state(&controls, &control);
 
                 states_index += 1;
 

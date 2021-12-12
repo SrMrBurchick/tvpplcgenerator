@@ -1,6 +1,9 @@
 {
     "INFO": "US",
     "IOCONFIG_EMPTY": "No configured I/O",
+    "CONDITIONS_CONFIG_EMPTY": "No configured conditions",
+    "SUBPROGRAM_CONFIG_EMPTY": "No configured subprogramms",
+    "SUBPROGRAM_STEPS_EMPTY": "No configured steps",
     "BUTTON_NEXT": "Next",
     "BUTTON_BACK": "Back",
     "CREATE_NEW": "Create new",

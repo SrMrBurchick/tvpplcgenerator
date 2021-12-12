@@ -5,7 +5,7 @@ use iced::{
 
 use crate::{configuration:: {
     language_pack_conastants::{
-        CREATE_NEW, LOAD_TABLE, BUTTON_ADD_NEW, IOCONFIG_EMPTY, BUTTON_GENERATE_TABLE, BUTTON_BACK
+        CREATE_NEW, LOAD_TABLE, BUTTON_ADD_NEW, IOCONFIG_EMPTY, BUTTON_GENERATE_TABLE, BUTTON_BACK, SUBPROGRAM_CONFIG_EMPTY, SUBPROGRAM_STEPS_EMPTY, CONDITIONS_CONFIG_EMPTY
     },
     style_config::{DEFAULT_PADDING, DEFAULT_SPACING, FONT_SIZE, self},
     GLOBAL_CONFIG, FrameTypes
@@ -429,7 +429,7 @@ impl <'a> PresetViews {
                 .into()
         } else {
             Container::new(
-                Text::new(config.get_field(IOCONFIG_EMPTY).to_string().as_str())
+                Text::new(config.get_field(SUBPROGRAM_CONFIG_EMPTY).to_string().as_str())
                     .width(Length::Fill)
                     .size(25)
                     .horizontal_alignment(HorizontalAlignment::Center)
@@ -573,7 +573,7 @@ impl <'a> PresetViews {
                 .into()
         } else {
             Container::new(
-                Text::new(config.get_field(IOCONFIG_EMPTY).to_string().as_str())
+                Text::new(config.get_field(SUBPROGRAM_STEPS_EMPTY).to_string().as_str())
                     .width(Length::Fill)
                     .size(25)
                     .horizontal_alignment(HorizontalAlignment::Center)
@@ -671,7 +671,7 @@ impl <'a> PresetViews {
                 .into()
         } else {
             Container::new(
-                Text::new(config.get_field(IOCONFIG_EMPTY).to_string().as_str())
+                Text::new(config.get_field(CONDITIONS_CONFIG_EMPTY).to_string().as_str())
                     .width(Length::Fill)
                     .size(25)
                     .horizontal_alignment(HorizontalAlignment::Center)
@@ -770,7 +770,7 @@ impl <'a> PresetViews {
                 .into()
         } else {
             Container::new(
-                Text::new(config.get_field(IOCONFIG_EMPTY).to_string().as_str())
+                Text::new(config.get_field(CONDITIONS_CONFIG_EMPTY).to_string().as_str())
                     .width(Length::Fill)
                     .size(25)
                     .horizontal_alignment(HorizontalAlignment::Center)
@@ -832,7 +832,7 @@ impl <'a> PresetViews {
                 .into()
         } else {
             Container::new(
-                Text::new(config.get_field(IOCONFIG_EMPTY).to_string().as_str())
+                Text::new(config.get_field(CONDITIONS_CONFIG_EMPTY).to_string().as_str())
                     .width(Length::Fill)
                     .size(25)
                     .horizontal_alignment(HorizontalAlignment::Center)

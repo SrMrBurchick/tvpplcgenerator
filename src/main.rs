@@ -119,6 +119,9 @@ impl Application for Generator {
                             SubprogramConfigStetes::SubprogramEditDescription => {
                                 *state = SubprogramConfigStetes::SubprogramConfigState
                             },
+                            SubprogramConfigStetes::SubprogramStepConditonsPick => {
+                                *state = SubprogramConfigStetes::SubprogramEditState
+                            },
                             SubprogramConfigStetes::SubprogramConfigState => {
                                 if (self.active_preset + 1) < self.presets.len() {
                                     self.active_preset += 1

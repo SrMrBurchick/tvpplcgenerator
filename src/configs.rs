@@ -47,9 +47,12 @@ impl IOElement {
                 self.signal_type = signal_type
             },
             IOElementMessage::HwSelected(hw) => {
-                self.hw_address = hw.parse().unwrap()
+                let parsed = hw.parse::<u8>();
+                if parsed.is_ok() {
+                    self.hw_address = parsed.unwrap()
+                }
             }
-            IOElementMessage::DeleteElement => {}
+            _ => {}
         }
     }
 
