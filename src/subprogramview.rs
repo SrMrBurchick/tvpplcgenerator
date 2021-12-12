@@ -91,6 +91,7 @@ pub struct SubprogramStepView {
     delete_button: button::State,
     operator_list: pick_list::State<Operators>,
     subprogramstep: Rc<RefCell<SubprogramStep>>,
+    description_input: text_input::State,
 }
 
 impl<'a> SubprogramStepView {
@@ -101,11 +102,17 @@ impl<'a> SubprogramStepView {
             control_edit_button: button::State::new(),
             operator_list: pick_list::State::default(),
             subprogramstep: subprogramstep.clone(),
+            description_input: text_input::State::new()
         }
     }
 
     pub fn view(&'a mut self) -> Element<'a, SubprogramStepMessage> {
-        let (step, operator, ..) = self.subprogramstep.borrow().get_data();
+        let (step, operator, _, _, desription) = self.subprogramstep.borrow().get_data();
+
+        let description_input = TextInput::new(
+            &mut self.description_input,
+            "", &desription, SubprogramStepMessage::DescriptionChanged
+        ).size(30).width(Length::Units(SUBPRORAM_DESCRIPTION_WIDTH));
 
         let step_label = Text::new(String::from(format!("{}", step)),
         ).size(30).width(Length::Units(140));
@@ -140,6 +147,10 @@ impl<'a> SubprogramStepView {
                 .push(Text::new(config.get_field(SUBPROGRAM_STEP).to_string()
                                                               .as_str()))
                 .push(step_label))
+            .push(Column::new()
+                .push(Text::new(config.get_field(FIELD_DESCRIPTION).to_string()
+                                                              .as_str()))
+                .push(description_input))
             .push(Column::new()
                 .push(Text::new(config.get_field(OPERATOR).to_string()
                                                               .as_str()))

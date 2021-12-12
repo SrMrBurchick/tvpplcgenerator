@@ -1,15 +1,15 @@
 use iced::{
     button, Align, Button, Column, Container, Element, HorizontalAlignment,
-    Length, Text, Scrollable, scrollable
+    Length, Text, Scrollable, scrollable, Space, Row
 };
 
 use crate::{configuration:: {
     language_pack_conastants::{
-        CREATE_NEW, LOAD_TABLE, BUTTON_ADD_NEW, IOCONFIG_EMPTY
+        CREATE_NEW, LOAD_TABLE, BUTTON_ADD_NEW, IOCONFIG_EMPTY, BUTTON_GENERATE_TABLE, BUTTON_BACK
     },
     style_config::{DEFAULT_PADDING, DEFAULT_SPACING, FONT_SIZE, self},
     GLOBAL_CONFIG, FrameTypes
-}, configs::{CONDTIONS_CONFIG, CondtionsConfigStetes}};
+}, configs::{CONDTIONS_CONFIG, CondtionsConfigStetes}, generator::generate_tables};
 
 use crate::ioconfigview::{IOElementView};
 use crate::configs::{
@@ -31,7 +31,8 @@ pub enum PresetViewMessage {
     InputChanged(String),
     IOConfigMessage(IOConfigMessage),
     SubprogramConfigMessage(SubprogramConfigMessage),
-    CondtionsConfigMessage(CondtionsConfigMessage)
+    CondtionsConfigMessage(CondtionsConfigMessage),
+    GenereteTable
 }
 
 #[derive(Debug)]
@@ -62,6 +63,9 @@ pub enum PresetViews {
         ioconditionsview: Vec<SubprogramIOConditionsView>,
         state: CondtionsConfigStetes,
         frame_type: FrameTypes
+    },
+    GenereteTableView {
+        generete_table: button::State,
     }
 }
 
@@ -113,6 +117,11 @@ impl <'a> PresetViews {
                 Column::new()
                     .push(Self::conditions_view(self)
                         .map(PresetViewMessage::CondtionsConfigMessage))
+            },
+            PresetViews::GenereteTableView {
+                generete_table
+            } => {
+                Self::generete_table_view(generete_table)
             }
 
         }
@@ -124,7 +133,8 @@ impl <'a> PresetViews {
             PresetViews::EntryView {..} => Self::entry_view_update(message),
             PresetViews::IOConfigView {elements, ..} => Self::ioconfig_view_update(elements, message),
             PresetViews::SubprogramConfigView {..} => Self::subprogram_view_update(self, message),
-            PresetViews::ConditionsConfigView {..} => Self::conditions_view_update(self, message)
+            PresetViews::ConditionsConfigView {..} => Self::conditions_view_update(self, message),
+            PresetViews::GenereteTableView {..} => Self::generete_table_view_update(message)
         }
     }
 
@@ -157,6 +167,35 @@ impl <'a> PresetViews {
 
     fn entry_view_update(message: PresetViewMessage) {
         //TODO
+    }
+
+    fn generete_table_view(
+        generate_button: &'a mut button::State,
+    ) -> Column<'a, PresetViewMessage> {
+        let config = unsafe {
+            &GLOBAL_CONFIG
+        }.as_ref().unwrap();
+        Column::new()
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .spacing(DEFAULT_SPACING)
+            .padding(DEFAULT_PADDING)
+            .align_items(Align::Center)
+            .push(Button::new(generate_button,
+                              Text::new(config.get_field(BUTTON_GENERATE_TABLE)
+                                        .to_string().as_str())
+                              .size(FONT_SIZE))
+                .style(style_config::Button::Primary)
+                .on_press(PresetViewMessage::GenereteTable))
+    }
+
+    fn generete_table_view_update(message: PresetViewMessage) {
+        match message {
+            PresetViewMessage::GenereteTable => {
+                generate_tables();
+            },
+            _ => {}
+        }
     }
 
     fn ioconfig_view(

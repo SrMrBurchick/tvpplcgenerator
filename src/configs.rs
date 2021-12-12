@@ -213,6 +213,7 @@ pub enum SubprogramStepMessage {
     ChangeId(usize),
     DeleteStep,
     AddCondition(FrameTypes),
+    DescriptionChanged(String),
     PickConditions(FrameTypes),
     IOElementCoditionsMessage(usize, IOElementCoditionsMessage),
     OperatorSelected(Operators),
@@ -221,6 +222,7 @@ pub enum SubprogramStepMessage {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SubprogramStep {
     id: usize,
+    descripton: String,
     merge_operator: Operators,
     state_conditions: Vec<Rc<RefCell<IOElementCoditions>>>,
     control_conditions: Vec<Rc<RefCell<IOElementCoditions>>>,
@@ -235,6 +237,7 @@ impl SubprogramStep {
             state_conditions: vec![],
             control_conditions: vec![],
             active_condion: FrameTypes::State,
+            descripton: String::new()
         }
     }
 
@@ -282,13 +285,14 @@ impl SubprogramStep {
 
     pub fn get_data(&self) -> (
         usize, Operators, Vec<Rc<RefCell<IOElementCoditions>>>,
-        Vec<Rc<RefCell<IOElementCoditions>>>
+        Vec<Rc<RefCell<IOElementCoditions>>>, String
     ) {
         (
             self.id,
             self.merge_operator,
             self.state_conditions.clone(),
             self.control_conditions.clone(),
+            self.descripton.clone()
         )
     }
 
@@ -306,6 +310,9 @@ impl SubprogramStep {
             SubprogramStepMessage::OperatorSelected(operator) => {
                 self.merge_operator = operator
             },
+            SubprogramStepMessage::DescriptionChanged(descripton) => {
+                self.descripton = descripton
+            }
             SubprogramStepMessage::IOElementCoditionsMessage(i, message) => {
                 match message {
                     IOElementCoditionsMessage::DeleteElement(frame_type) => {
@@ -492,6 +499,10 @@ impl SubprogramConfig {
 
     pub fn get_last_address(&self) -> usize {
         self.last_address
+    }
+
+    pub fn get_subprograms(&self) -> Vec<Rc<RefCell<Subprogram>>> {
+        self.subprograms.clone()
     }
 
     pub fn update_addresses(&mut self) {
@@ -728,6 +739,14 @@ impl CondtionsConfig {
 
     pub fn get_conditon(&self, id: usize) -> Rc<RefCell<ConditionsConfigElement>> {
         self.conditions.get(id).unwrap().clone()
+    }
+
+    pub fn sort_conditions(&mut self) {
+        self.conditions.sort_by(|a, b| a.borrow().address.cmp(&b.borrow().address));
+    }
+
+    pub fn get_conditions(&self) -> Vec<Rc<RefCell<ConditionsConfigElement>>> {
+        self.conditions.clone()
     }
 
     pub fn update(

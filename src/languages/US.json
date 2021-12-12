@@ -30,5 +30,16 @@
     "BUTTON_EDIT_CONTROLS_SUBPROGRAM_STEP": "Pick controls",
     "BUTTON_TO_IO_CONFIGURATION": "To IO configuration",
     "BUTTON_TO_SUBPROGRAMMS_CONFIGURATION": "To subprogramms configuration",
-    "BUTTON_TO_CONDITIONS": "To conditions configuration"
+    "BUTTON_TO_CONDITIONS": "To conditions configuration",
+    "TABLE_CONTENT_TRASITION_ADDRESS": "Transition address",
+    "TABLE_CONTENT_SENSOR_STATES": "Sensor states",
+    "TABLE_CONTENT_CONTROL_STATES": "Control states",
+    "TABLE_CONTENT_TRASITION_ADDRESS": "Transition address",
+    "TABLE_CONTENT_SIGN_OF_TRANSITION": "Sign of transition",
+    "TABLE_CONTENT_SIGN_OF_BLOCKING": "Sign of blocking",
+    "TABLE_CONTENT_DESCRIPTION": "Description",
+    "TABLE_SHEET_CONDITIONS": "Conditions",
+    "TABLE_SHEET_SUBPROGRAMS": "Subprograms",
+    "TABLE_CONTENT_SIGN_OF_FINISH": "Sign of the program finish",
+    "TABLE_CONTENT_SUBPROGRAM_INITIAL": "Initial state"
 }

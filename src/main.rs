@@ -1,6 +1,7 @@
 use std::{rc::Rc, cell::RefCell};
 
-use configs::{IOConfig, IO_CONFIG, SUBPROGRAMS_CONFIG, SubprogramConfig, SubprogramConfigStetes, CONDTIONS_CONFIG, CondtionsConfig, CondtionsConfigStetes};
+use configs::{IOConfig, IO_CONFIG, SUBPROGRAMS_CONFIG, SubprogramConfig, SubprogramConfigStetes, CONDTIONS_CONFIG, CondtionsConfig, CondtionsConfigStetes, IOElement};
+use generator::generate_tables;
 use iced::{
     button, executor, Align, Application, Button, Clipboard, Column, Command,
     Container, Element, Length, Settings, Text, scrollable, Row, Space
@@ -9,7 +10,7 @@ use iced::{
 mod configuration;
 use configuration:: {
     Config, language_pack_conastants::{BUTTON_NEXT, BUTTON_BACK}, GLOBAL_CONFIG,
-    style_config::{self, FONT_SIZE, DEFAULT_PADDING}, FrameTypes
+    style_config::{self, FONT_SIZE, DEFAULT_PADDING}, FrameTypes, SignalTypes
 };
 use subprogramview::SubprogramDescriptionEditView;
 use view::{PresetViewMessage, PresetViews};
@@ -19,6 +20,7 @@ mod ioconfigview;
 mod subprogramview;
 mod conditionsview;
 mod configs;
+mod generator;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -74,6 +76,9 @@ impl Application for Generator {
                         frame_type: FrameTypes::State,
                         ioconditionsview: vec![]
                     },
+                    PresetViews::GenereteTableView {
+                        generete_table: button::State::new(),
+                    }
                 ],
                 next_preset: button::State::new(),
                 back_preset: button::State::new(),
